@@ -7,7 +7,7 @@ import loggerService from './services/logger.service';
 
 const app = express();
 app.disable("x-powered-by")
-app.use(cors({ credentials: true, origin: 'https://address.nerdstacks.org/' }));
+app.use(cors({ credentials: false, origin: '*' }));
 
 app.locals.HEALTH_CHECK_ENABLED = true;
 app.get("/health", (_, res) => {

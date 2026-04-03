@@ -4,13 +4,13 @@ on:
   push:
     branches:
       - main
-      - "BugFix/**"
-      - "features/**"
+      - "BugFix"
+      - "features"
   pull_request:
     branches:
       - main
-      - "BugFix/**"
-      - "features/**"
+      - "BugFix"
+      - "features"
 
 jobs:
   test:

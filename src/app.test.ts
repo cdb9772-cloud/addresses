@@ -2,19 +2,18 @@ import request from 'supertest';
 import app from './app';
 
 const mockFetchSuccess = (payload: any) => {
-    global.fetch = jest.fn().mockResolvedValue({
+    jest.spyOn(global, 'fetch').mockResolvedValue({
         json: async () => payload,
-    });
+    } as any);
 };
 
 const mockFetchFailure = (message = 'network error') => {
-    global.fetch = jest.fn().mockRejectedValue(new Error(message));
+    jest.spyOn(global, 'fetch').mockRejectedValue(new Error(message));
 };
 
 
 describe('200 OK', () => {
-    const originalFetch = global.fetch;
-    afterEach(() => { global.fetch = originalFetch; });
+    afterEach(() => { jest.restoreAllMocks(); });
 
     it('POST /address/request returns a 200 with a valid body', async () => {
         mockFetchSuccess({city: 'New York'});
@@ -102,8 +101,7 @@ describe('400 Bad Request', () => {
 });
 
 describe('500 Internal Server Error', () => {
-    const originalFetch = global.fetch;
-    afterEach(() => { global.fetch = originalFetch; });
+    afterEach(() => { jest.restoreAllMocks(); });
 
     it('returns 400 (and not 500) when the downstream API fails on /address/request', async () => {
         mockFetchFailure();

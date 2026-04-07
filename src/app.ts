@@ -28,12 +28,14 @@ app.use(async (req, res: Response, next: NextFunction) => {
 
 app.use(async (err: any, req: Request, res: Response, next: NextFunction) => {
     loggerService.error({ message: err.message, path: req.path }).flush();
-    res.status(500).send({
-        error: {
-            status: 500,
-            message: "Internal Error",
-        }
-    });
-});
+    const status = err.status === 400 ? 400 : 500;
+    const message = err.status === 400 ? "Invalid request" : "Internal Error";
 
+    res.status(status).send({
+        error: {
+            status: status,
+            message: message,
+        }
+});
+});
 export default app;

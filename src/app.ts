@@ -28,8 +28,8 @@ app.use(async (req, res: Response, next: NextFunction) => {
 
 app.use(async (err: any, req: Request, res: Response, next: NextFunction) => {
     loggerService.error({ message: err.message, path: req.path }).flush();
-    const status = err.status === 400 ? 400 : 500;
-    const message = err.status === 400 ? "Invalid request" : "Internal Error";
+    const status = err.status ?? 500;
+    const message = err.status === 500 ? "Internal Error" : err.message;
 
     res.status(status).send({
         error: {

@@ -33,4 +33,4 @@ jobs:
         run: npm ci
 
       - name: Run address service tests
-        run: npx jest address.service.test --config jest.config.js --passWithNoTests
+        run: npx jest address.service.test app.test --config jest.config.js --passWithNoTests

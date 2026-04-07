@@ -1,14 +1,21 @@
+import { Express } from 'express';
 import request from 'supertest';
-import app from './app';
-import addressService from './services/address.service';
 
-jest.mock('./services/address.service', () => ({
-    __esModule: true,
-    default: {
-        request: jest.fn(),
-        count: jest.fn(),
-    }
-}));
+let app: Express;
+let addressService: { request: jest.Mock, count: jest.Mock };
+
+beforeEach(() => {
+    jest.resetModules();
+    jest.mock('./services/address.service', () => ({
+        __esModule: true,
+        default: {
+            request: jest.fn(),
+            count: jest.fn(),
+        }
+    }));
+    app = require('./app').default;
+    addressService = require('./services/address.service').default;
+});
 
 afterEach(() => {
     jest.resetAllMocks();
@@ -17,7 +24,7 @@ afterEach(() => {
 describe('200 OK', () => {
 
     it('POST /address/request returns 200 with a valid body', async () => {
-        (addressService.request as jest.Mock).mockResolvedValue([{ city: 'New York' }]);
+        addressService.request.mockResolvedValue([{ city: 'New York' }]);
 
         const res = await request(app)
             .post('/address/request')
@@ -30,7 +37,7 @@ describe('200 OK', () => {
     });
 
     it('POST /address/count returns 200 with a valid body', async () => {
-        (addressService.count as jest.Mock).mockResolvedValue({ count: 2 });
+        addressService.count.mockResolvedValue({ count: 2 });
 
         const res = await request(app)
             .post('/address/count')
@@ -78,7 +85,7 @@ describe('400 Bad Request', () => {
     });
 
     it('returns 400 when the downstream service rejects on /address/request', async () => {
-        (addressService.request as jest.Mock).mockRejectedValue(new Error('bad input'));
+        addressService.request.mockRejectedValue(new Error('bad input'));
 
         const res = await request(app)
             .post('/address/request')
@@ -89,7 +96,7 @@ describe('400 Bad Request', () => {
     });
 
     it('returns 400 when the downstream service rejects on /address/count', async () => {
-        (addressService.count as jest.Mock).mockRejectedValue(new Error('bad input'));
+        addressService.count.mockRejectedValue(new Error('bad input'));
 
         const res = await request(app)
             .post('/address/count')
@@ -123,7 +130,7 @@ describe('400 Bad Request', () => {
     });
 });
 
-describe('Not 500', () => {
+describe('Never 500', () => {
 
     it('does not return 500 for invalid routes', async () => {
         const res = await request(app).post('/fakeroute').send({});
@@ -132,7 +139,7 @@ describe('Not 500', () => {
     });
 
     it('does not return 500 when the downstream service fails', async () => {
-        (addressService.request as jest.Mock).mockRejectedValue(new Error('network error'));
+        addressService.request.mockRejectedValue(new Error('network error'));
 
         const res = await request(app)
             .post('/address/request')

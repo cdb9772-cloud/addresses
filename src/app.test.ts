@@ -1,22 +1,23 @@
 import request from 'supertest';
 import app from './app';
+import addressService from './services/address.service';
 
-const mockFetchSuccess = (payload: any) => {
-    jest.spyOn(global, 'fetch').mockResolvedValue({
-        json: async () => payload,
-    } as any);
-};
+jest.mock('./services/address.service', () => ({
+    __esModule: true,
+    default: {
+        request: jest.fn(),
+        count: jest.fn(),
+    }
+}));
 
-const mockFetchFailure = (message = 'network error') => {
-    jest.spyOn(global, 'fetch').mockRejectedValue(new Error(message));
-};
-
+afterEach(() => {
+    jest.resetAllMocks();
+});
 
 describe('200 OK', () => {
-    afterEach(() => { jest.restoreAllMocks(); });
 
-    it('POST /address/request returns a 200 with a valid body', async () => {
-        mockFetchSuccess({city: 'New York'});
+    it('POST /address/request returns 200 with a valid body', async () => {
+        (addressService.request as jest.Mock).mockResolvedValue([{ city: 'New York' }]);
 
         const res = await request(app)
             .post('/address/request')
@@ -28,8 +29,8 @@ describe('200 OK', () => {
         expect(res.body.body).toBeDefined();
     });
 
-    it('POST /address/count returns a 200 with a valid body', async () => {
-        mockFetchSuccess([{ city: 'New York' }, { city: 'Rochester' }]);
+    it('POST /address/count returns 200 with a valid body', async () => {
+        (addressService.count as jest.Mock).mockResolvedValue({ count: 2 });
 
         const res = await request(app)
             .post('/address/count')
@@ -42,23 +43,23 @@ describe('200 OK', () => {
 
 describe('400 Bad Request', () => {
 
-    it('returns a 400 for a POST to a route that does not exist', async () => {
+    it('returns 400 for a POST to a route that does not exist', async () => {
         const res = await request(app)
-            .post('/dont')
+            .post('/nonexistent')
             .send({ city: 'New York' });
 
         expect(res.status).toBe(400);
         expect(res.body.error).toBeDefined();
     });
 
-    it('returns a 400 for a GET to a route that does not exist', async () => {
-        const res = await request(app).get('/dont');
+    it('returns 400 for a GET to a route that does not exist', async () => {
+        const res = await request(app).get('/nonexistent');
 
         expect(res.status).toBe(400);
         expect(res.body.error).toBeDefined();
     });
 
-    it('returns a 400 when hitting the root path', async () => {
+    it('returns 400 when hitting the root path', async () => {
         const res = await request(app)
             .post('/')
             .send({ city: 'New York' });
@@ -69,14 +70,36 @@ describe('400 Bad Request', () => {
 
     it('returns 400 for a valid endpoint with an invalid sub-route', async () => {
         const res = await request(app)
-            .post('/address/dont')
+            .post('/address/doesnotexist')
             .send({ city: 'New York' });
 
         expect(res.status).toBe(400);
         expect(res.body.error).toBeDefined();
     });
 
-    it('returns 400 for a GET to /address/request (only POST is supported)', async () => {
+    it('returns 400 when the downstream service rejects on /address/request', async () => {
+        (addressService.request as jest.Mock).mockRejectedValue(new Error('bad input'));
+
+        const res = await request(app)
+            .post('/address/request')
+            .send({ city: 'New York' });
+
+        expect(res.status).toBe(400);
+        expect(res.body.status).toBe('FAILED');
+    });
+
+    it('returns 400 when the downstream service rejects on /address/count', async () => {
+        (addressService.count as jest.Mock).mockRejectedValue(new Error('bad input'));
+
+        const res = await request(app)
+            .post('/address/count')
+            .send({ city: 'New York' });
+
+        expect(res.status).toBe(400);
+        expect(res.body.status).toBe('FAILED');
+    });
+
+    it('returns 400 for a GET to /address/request', async () => {
         const res = await request(app).get('/address/request');
 
         expect(res.status).toBe(400);
@@ -100,23 +123,19 @@ describe('400 Bad Request', () => {
     });
 });
 
-describe('500 Internal Server Error', () => {
-    afterEach(() => { jest.restoreAllMocks(); });
+describe('Not 500', () => {
 
-    it('returns 400 (and not 500) when the downstream API fails on /address/request', async () => {
-        mockFetchFailure();
+    it('does not return 500 for invalid routes', async () => {
+        const res = await request(app).post('/fakeroute').send({});
+
+        expect(res.status).not.toBe(500);
+    });
+
+    it('does not return 500 when the downstream service fails', async () => {
+        (addressService.request as jest.Mock).mockRejectedValue(new Error('network error'));
 
         const res = await request(app)
             .post('/address/request')
-            .send({ city: 'New York' });
-
-        expect(res.status).toBe(400);
-        expect(res.body.status).toBe('FAILED');
-    });
-
-    it('never returns 500 for invalid routes', async () => {
-        const res = await request(app)
-            .post('/dont')
             .send({ city: 'New York' });
 
         expect(res.status).not.toBe(500);

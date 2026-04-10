@@ -6,8 +6,8 @@ import createHttpError from 'http-errors';
 
 class BaseEndpoint {
     private readonly extensions = new Map<string, string>([
-        ["dev", ".js"],
-        ["prod", ".ts"]
+        ["dev", ".ts"],
+        ["prod", ".js"]
     ]);
 
     public constructor() { }

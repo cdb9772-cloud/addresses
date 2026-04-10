@@ -6,19 +6,31 @@ import { ENV } from './constants/environment-vars.constants';
 const router = express.Router();
 
 router.get('*', (req: Request, res: Response, next: NextFunction) => {
-    (require(getEndpointControllerPath(req))).getRoute(req, res, next);
+    try {
+        (require(getEndpointControllerPath(req))).getRoute(req, res, next);
+    } catch (err) {
+        next(err);
+    }
 });
 
 router.post('*', (req: Request, res: Response, next: NextFunction) => {
-    (require(getEndpointControllerPath(req))).postRoute(req, res, next);
+    try {
+        (require(getEndpointControllerPath(req))).postRoute(req, res, next); }
+    catch (err) {
+        next(err); }
 });
 
 router.put('*', (req: Request, res: Response, next: NextFunction) => {
-    (require(getEndpointControllerPath(req))).putRoute(req, res, next);
+    try { (require(getEndpointControllerPath(req))).putRoute(req, res, next); } 
+    catch (err) {
+        next(err); }
 });
 
 router.delete('*', (req: Request, res: Response, next: NextFunction) => {
-    (require(getEndpointControllerPath(req))).deleteRoute(req, res, next);
+    try {
+        (require(getEndpointControllerPath(req))).deleteRoute(req, res, next); }
+        catch (err) {
+        next(err); }
 });
 
 function getEndpointControllerPath(req: Request): string {

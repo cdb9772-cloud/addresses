@@ -1,16 +1,42 @@
+/**
+ * Address service — upstream integration and /count behavior.
+ *
+ * BugFix-Count-Endpoint (Connor Bashaw):
+ * - The /count endpoint was broken because `count()` called `response.size()` on the
+ *   value returned from `response.json()`. The nerdstacks API returns a JSON *array* of
+ *   addresses; arrays use `.length`, not `.size()` (and Map/Set use `.size` as a property,
+ *   not a method). That mismatch caused runtime errors or wrong behavior.
+ * - Base URL was updated from http://address.nerdstacks.org:3000/ to
+ *   https://address.nerdstacks.org/ to match the course spec (HTTPS, correct host).
+ * - `request()` now sends `Content-Type: application/json` so the POST body is interpreted
+ *   as JSON by the upstream server (same as a typical curl -H).
+ * - The class is exported by name so unit tests can call the static helper; the default
+ *   export remains the singleton instance used by the rest of the app.
+ */
 import loggerService from "./logger.service";
 
-class AddressService {
-    private static fetchUrl = 'http://address.nerdstacks.org:3000/';
+export class AddressService {
+    // Connor Bashaw: HTTPS URL per assignment; old http + :3000 was incorrect for production API.
+    private static fetchUrl = 'https://address.nerdstacks.org/';
 
     constructor() { }
+
+    /**
+     * Connor Bashaw: Extracted for clarity and unit testing.
+     * The upstream POST returns a JSON array of address records.
+     * Count is the length of that array (or 0 if the payload is unexpected).
+     */
+    public static countItemsFromResponsePayload(data: unknown): number {
+        return Array.isArray(data) ? data.length : 0;
+    }
 
     public async count(addressRequest?: any): Promise<any> {
         return new Promise<any>(async (resolve, reject) => {
             this.request(addressRequest)
                 .then((response) => {
+                    // Connor Bashaw: was `response.size()` — invalid on parsed JSON arrays.
                     resolve({
-                        "count": response.size()
+                        "count": AddressService.countItemsFromResponsePayload(response)
                     });
                 })
                 .catch((err) => {
@@ -23,6 +49,8 @@ class AddressService {
         return new Promise<any>(async (resolve, reject) => {
             fetch(AddressService.fetchUrl, {
                 method: "POST",
+                // Connor Bashaw: explicit JSON header for POST body (pairs with JSON.stringify below).
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(addressRequest.body)
             })
                 .then(async (response) => {
@@ -67,4 +95,6 @@ class AddressService {
     // }
 }
 
-export default new AddressService();
+// Connor Bashaw: named export is `AddressService`; default export is the singleton for endpoints/services.
+const addressService = new AddressService();
+export default addressService;

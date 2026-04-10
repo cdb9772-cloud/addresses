@@ -7,8 +7,7 @@ import loggerService from './services/logger.service';
 
 const app = express();
 app.disable("x-powered-by")
-app.use(cors())
-app.use(cors({ credentials: true, origin: '*' }));
+app.use(cors({ credentials: false, origin: '*' }));
 
 app.locals.HEALTH_CHECK_ENABLED = true;
 app.get("/health", (_, res) => {
@@ -29,12 +28,14 @@ app.use(async (req, res: Response, next: NextFunction) => {
 
 app.use(async (err: any, req: Request, res: Response, next: NextFunction) => {
     loggerService.error({ message: err.message, path: req.path }).flush();
-    res.status(500).send({
-        error: {
-            status: 500,
-            message: "Internal Error",
-        }
-    });
-});
+    const status = err.status ?? 500;
+    const message = err.status === 500 ? "Internal Error" : err.message;
 
+    res.status(status).send({
+        error: {
+            status: status,
+            message: message,
+        }
+});
+});
 export default app;

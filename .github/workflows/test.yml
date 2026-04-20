@@ -13,6 +13,7 @@ on:
       - "BugFix"
       - "features"
       - "feature-**"
+      - "feature/**"
 
 jobs:
   test:
@@ -33,4 +34,4 @@ jobs:
         run: npm ci
 
       - name: Run tests
-        run: npx jest address.service.test app.test --config jest.config.js --passWithNoTests
+        run: npx jest address.service.test app.test logger.service.test --config jest.config.js --passWithNoTests

@@ -74,6 +74,9 @@ jobs:
     name: Tests
     runs-on: ubuntu-latest
     needs: [build]
+    permissions:
+      checks: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -84,5 +87,12 @@ jobs:
         with:
           path: node_modules
           key: node-modules-${{ github.sha }}
+      - name: Run tests with coverage
+        if: github.event_name == 'pull_request'
+        uses: ArtiomTr/jest-coverage-report-action@v2
+        with:
+          test-script: npx jest address.service.test app.test logger.service.test --config jest.config.js --passWithNoTests
+
       - name: Run tests
+        if: github.event_name != 'pull_request'
         run: npx jest address.service.test app.test logger.service.test --config jest.config.js --passWithNoTests

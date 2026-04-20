@@ -417,4 +417,149 @@ describe('AddressService.distance', () => {
 });
 
 
-//zipcode tests
+describe('AddressService.zipcode', () => {
+    const originalFetch = global.fetch;
+ 
+    const mockAddress = {
+        number: '1',
+        street: 'MIRACLE MILE DR',
+        city: 'ROCHESTER',
+        state: 'NY',
+        zipcode: '14623',
+        country: 'US',
+        latitude: 43.0846481,
+        longitude: -77.6327362,
+    };
+ 
+    beforeEach(() => {
+        global.fetch = jest.fn();
+    });
+ 
+    afterEach(() => {
+        global.fetch = originalFetch;
+    });
+ 
+    it('resolves with the city and confirms fetch was called correctly', async () => {
+        (global.fetch as jest.Mock).mockResolvedValue({
+            json: async () => [mockAddress],
+        });
+ 
+        const result = await addressService.zipcode({ body: { zipcode: '14623' } });
+ 
+        expect(result).toEqual({ city: 'ROCHESTER' });
+        expect(global.fetch).toHaveBeenCalledWith(
+            'https://address.nerdstacks.org/',
+            expect.objectContaining({
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ zipcode: '14623' }),
+            })
+        );
+    });
+ 
+    it('rejects when no request body is provided and does not call fetch', async () => {
+        await expect(
+            addressService.zipcode(undefined)
+        ).rejects.toMatchObject({ message: 'Request body is required.' });
+ 
+        expect(global.fetch).not.toHaveBeenCalled();
+    });
+ 
+    it('rejects when the body object is null and does not call fetch', async () => {
+        await expect(
+            addressService.zipcode({ body: null })
+        ).rejects.toMatchObject({ message: 'Request body is required.' });
+ 
+        expect(global.fetch).not.toHaveBeenCalled();
+    });
+ 
+    it('rejects when zipcode field is missing from body and does not call fetch', async () => {
+        await expect(
+            addressService.zipcode({ body: { street: 'MIRACLE MILE DR' } })
+        ).rejects.toMatchObject({ message: 'zipcode required!' });
+ 
+        expect(global.fetch).not.toHaveBeenCalled();
+    });
+ 
+    it('rejects when zipcode is an empty string and does not call fetch', async () => {
+        await expect(
+            addressService.zipcode({ body: { zipcode: '' } })
+        ).rejects.toMatchObject({ message: 'zipcode required!' });
+ 
+        expect(global.fetch).not.toHaveBeenCalled();
+    });
+ 
+    it('rejects on empty upstream array and confirms fetch was called', async () => {
+        (global.fetch as jest.Mock).mockResolvedValue({
+            json: async () => [],
+        });
+ 
+        await expect(
+            addressService.zipcode({ body: { zipcode: '14623' } })
+        ).rejects.toMatchObject({ message: 'no city found matching zipcode.' });
+ 
+        expect(global.fetch).toHaveBeenCalledWith(
+            'https://address.nerdstacks.org/',
+            expect.objectContaining({
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ zipcode: '14623' }),
+            })
+        );
+    });
+ 
+    it('rejects on non array upstream response and confirms fetch was called', async () => {
+        (global.fetch as jest.Mock).mockResolvedValue({
+            json: async () => null,
+        });
+ 
+        await expect(
+            addressService.zipcode({ body: { zipcode: '14623' } })
+        ).rejects.toMatchObject({ message: 'no city found matching zipcode.' });
+ 
+        expect(global.fetch).toHaveBeenCalledWith(
+            'https://address.nerdstacks.org/',
+            expect.objectContaining({
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ zipcode: '14623' }),
+            })
+        );
+    });
+ 
+    it('rejects when the first result has no city field and confirms fetch was called', async () => {
+        (global.fetch as jest.Mock).mockResolvedValue({
+            json: async () => [{ number: '1', street: 'MIRACLE MILE DR', state: 'NY', zipcode: '14623' }],
+        });
+ 
+        await expect(
+            addressService.zipcode({ body: { zipcode: '14623' } })
+        ).rejects.toMatchObject({ message: 'no city found matching zipcode.' });
+ 
+        expect(global.fetch).toHaveBeenCalledWith(
+            'https://address.nerdstacks.org/',
+            expect.objectContaining({
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ zipcode: '14623' }),
+            })
+        );
+    });
+ 
+    it('rejects on network error and confirms fetch was still called', async () => {
+        (global.fetch as jest.Mock).mockRejectedValue(new Error('timeout'));
+ 
+        await expect(
+            addressService.zipcode({ body: { zipcode: '14623' } })
+        ).rejects.toThrow('timeout');
+ 
+        expect(global.fetch).toHaveBeenCalledWith(
+            'https://address.nerdstacks.org/',
+            expect.objectContaining({
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ zipcode: '14623' }),
+            })
+        );
+    });
+});

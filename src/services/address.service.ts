@@ -120,13 +120,13 @@ export class AddressService {
                                  message: 'Denormalize transaction occurred'})
                                  .flush();
             const body = addressRequest?.body ?? {};
+            const FIELDS = ['number', 'street', 'city', 'state', 'zipcode'];
             if (!addressRequest?.body) {
                 loggerService.warning({ path: '/address/denormalize',
                                         message: 'Request body is missing or null' })
                                         .flush();
-                return reject({ message: 'Request body is required.' });
+                return reject({ message: `Request body must include at least one of: ${FIELDS.join(', ')}.` });
             }
-            const FIELDS = ['number', 'street', 'city', 'state', 'zipcode'];
  
             if (!(FIELDS.some( f => body[f] !== undefined && 
                                     body[f] !== null && 

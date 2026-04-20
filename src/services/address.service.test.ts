@@ -68,3 +68,106 @@ describe('AddressService.count', () => {
         ).rejects.toThrow('network error');
     });
 });
+
+
+describe('AddressService.format', () => {
+    const originalFetch = global.fetch;
+ 
+    const mockAddress = {
+        number: '1',
+        street: 'MIRACLE MILE DR',
+        street2: '',
+        city: 'ROCHESTER',
+        state: 'NY',
+        zipcode: '14623',
+        plus4: '5851',
+        country: 'US',
+        latitude: 43.0846481,
+        longitude: -77.6327362,
+    };
+ 
+    beforeEach(() => {
+        global.fetch = jest.fn();
+    });
+ 
+    afterEach(() => {
+        global.fetch = originalFetch;
+    });
+ 
+    it('rejects when no valid fields are provided', async () => {
+        await expect(
+            addressService.format({ body: {} })
+        ).rejects.toMatchObject({ message: expect.stringContaining('at least one of') });
+    });
+ 
+    it('rejects when body is missing entirely', async () => {
+        await expect(
+            addressService.format({})
+        ).rejects.toMatchObject({ message: expect.stringContaining('at least one of') });
+    });
+ 
+    it('resolves with formatted results for a valid query', async () => {
+        (global.fetch as jest.Mock).mockResolvedValue({
+            json: async () => [mockAddress],
+        });
+ 
+        const result = await addressService.format({ body: { street: 'MIRACLE MILE DR' } });
+ 
+        expect(result).toEqual([{
+            latitude: 43.0846481,
+            longitude: -77.6327362,
+            formatted_address: '1 MIRACLE MILE DR, ROCHESTER, NY 14623-5851, US',
+        }]);
+    });
+ 
+    it('includes street2 in formatted_address when present', async () => {
+        (global.fetch as jest.Mock).mockResolvedValue({
+            json: async () => [{ ...mockAddress, street2: 'APT 2' }],
+        });
+ 
+        const result = await addressService.format({ body: { street: 'MIRACLE MILE DR' } });
+ 
+        expect(result[0].formatted_address).toBe('1 MIRACLE MILE DR APT 2, ROCHESTER, NY 14623-5851, US');
+    });
+ 
+    it('omits plus4 from formatted_address when empty', async () => {
+        (global.fetch as jest.Mock).mockResolvedValue({
+            json: async () => [{ ...mockAddress, plus4: '' }],
+        });
+ 
+        const result = await addressService.format({ body: { zipcode: '14623' } });
+ 
+        expect(result[0].formatted_address).toBe('1 MIRACLE MILE DR, ROCHESTER, NY 14623, US');
+    });
+ 
+    it('returns multiple results when upstream returns multiple', async () => {
+        const second = { ...mockAddress, number: '2', latitude: 43.085, longitude: -77.633 };
+        (global.fetch as jest.Mock).mockResolvedValue({
+            json: async () => [mockAddress, second],
+        });
+ 
+        const result = await addressService.format({ body: { street: 'MIRACLE MILE DR' } });
+ 
+        expect(result).toHaveLength(2);
+        expect(result[0].latitude).toBe(43.0846481);
+        expect(result[1].latitude).toBe(43.085);
+    });
+ 
+    it('returns empty array when upstream returns no results', async () => {
+        (global.fetch as jest.Mock).mockResolvedValue({
+            json: async () => [],
+        });
+ 
+        const result = await addressService.format({ body: { zipcode: '00000' } });
+ 
+        expect(result).toEqual([]);
+    });
+ 
+    it('rejects when fetch fails', async () => {
+        (global.fetch as jest.Mock).mockRejectedValue(new Error('network error'));
+ 
+        await expect(
+            addressService.format({ body: { zipcode: '14623' } })
+        ).rejects.toThrow('network error');
+    });
+});

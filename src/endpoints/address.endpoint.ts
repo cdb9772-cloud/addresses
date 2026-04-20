@@ -10,7 +10,7 @@ class AddressEndpoint extends baseEndpoint {
         super.executeSubRoute(addressEndpoint, req, res, next);
     }
 
-    private count_post(req: Request, res: Response, next: NextFunction) {
+    private count_post(req: Request, res: Response, _next: NextFunction) {
         addressService.count(req)
             .then((response) => {
                 res.status(200).send(responseWrapper(RESPONSE_STATUS_OK, RESPONSE_EVENT_READ, response));
@@ -19,8 +19,17 @@ class AddressEndpoint extends baseEndpoint {
             });
     }
 
-    private request_post(req: Request, res: Response, next: NextFunction) {
+    private request_post(req: Request, res: Response, _next: NextFunction) {
         addressService.request(req)
+            .then((response) => {
+                res.status(200).send(responseWrapper(RESPONSE_STATUS_OK, RESPONSE_EVENT_READ, response));
+            }).catch((err) => {
+                res.status(400).send(responseWrapper(RESPONSE_STATUS_FAIL, RESPONSE_EVENT_READ, err));
+            });
+    }
+
+    private format_post(req: Request, res: Response, _next: NextFunction) {
+        addressService.format(req)
             .then((response) => {
                 res.status(200).send(responseWrapper(RESPONSE_STATUS_OK, RESPONSE_EVENT_READ, response));
             }).catch((err) => {

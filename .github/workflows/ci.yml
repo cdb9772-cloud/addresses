@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - "BugFix"
+      - "features"
+      - "feature-**"
+      - "feature/**"
+  pull_request:
+    branches:
+      - main
+      - "BugFix"
+      - "features"
+      - "feature-**"
+      - "feature/**"
+
+jobs:
+  install:
+    name: Install
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20.13.1"
+          cache: "npm"
+      - run: npm ci
+      - uses: actions/cache/save@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ github.sha }}
+  
+  lint:
+    name: Static Analysis
+    runs-on: ubuntu-latest
+    needs: install
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20.13.1"
+          cache: "npm"
+      - uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ github.sha }}
+      - name: Lint and type check
+        run: npm run lint
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: install
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20.13.1"
+          cache: "npm"
+      - uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ github.sha }}
+      - name: Compile
+        run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20.13.1"
+          cache: "npm"
+      - uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ github.sha }}
+      - name: Run tests
+        run: npx jest address.service.test app.test logger.service.test --config jest.config.js --passWithNoTests

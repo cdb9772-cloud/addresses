@@ -32,6 +32,15 @@ export class AddressService {
 
     public async count(addressRequest?: any): Promise<any> {
         return new Promise<any>(async (resolve, reject) => {
+            loggerService.info({ path: '/address/count',
+                                 message: 'Count transaction occurred' })
+                                 .flush();
+            if (!addressRequest?.body) {
+                loggerService.warning({ path: '/address/count', 
+                                        message: 'Request body is missing or null' })
+                                        .flush();
+                return reject({ message: 'Request body is required.' });
+            }
             this.request(addressRequest)
                 .then((response) => {
                     // Connor Bashaw: was `response.size()` — invalid on parsed JSON arrays.
@@ -40,6 +49,7 @@ export class AddressService {
                     });
                 })
                 .catch((err) => {
+                    loggerService.error({ path: '/address/count', message: `${(err as Error).message}` }).flush();
                     reject(err);
                 });
         });
@@ -47,6 +57,15 @@ export class AddressService {
 
     public async request(addressRequest?: any): Promise<any> {
         return new Promise<any>(async (resolve, reject) => {
+            loggerService.info({ path: '/address/request',
+                                 message: 'Request transaction occurred' })
+                                 .flush();
+            if (!addressRequest?.body) {
+                loggerService.warning({ path: '/address/request', 
+                                        message: 'Request body is missing or null' })  
+                                        .flush();
+                return reject({ message: 'Request body is required.' });
+            }
             fetch(AddressService.fetchUrl, {
                 method: "POST",
                 // Connor Bashaw: explicit JSON header for POST body (pairs with JSON.stringify below).
@@ -93,7 +112,65 @@ export class AddressService {
     //     // convert and return distance in KM
     //     return R * c;
     // }
+
+
+    public async format(addressRequest?: any): Promise<any> {
+        return new Promise<any>(async (resolve, reject) => {
+            loggerService.info({ path: '/address/format', 
+                                 message: 'format transaction occurred'})
+                                 .flush();
+            const body = addressRequest?.body ?? {};
+            const FIELDS = ['number', 'street', 'city', 'state', 'zipcode'];
+            if (!addressRequest?.body) {
+                loggerService.warning({ path: '/address/format',
+                                        message: 'Request body is missing or null' })
+                                        .flush();
+                return reject({ message: `Request body must include at least one of: ${FIELDS.join(', ')}.` });
+            }
+ 
+            if (!(FIELDS.some( f => body[f] !== undefined && 
+                                    body[f] !== null && 
+                                    body[f] !== ''))){ 
+                loggerService.warning({ path: '/address/format', 
+                                        message: `Bad request: missing required fields.}` })
+                                        .flush();
+                return reject({ message: `Request body must include at least one of: ${FIELDS.join(', ')}.` });
+            }
+ 
+            this.request(addressRequest)
+                .then((response) => {
+                    if (!Array.isArray(response)) {
+                        loggerService.warning({ 
+                            path: '/address/format', 
+                            message: 'Upstream returned a nonarray response. Empty fallback' })
+                            .flush();
+                    }
+                    const results = Array.isArray(response) ? response : [];
+                    // formatted address looks like:
+                    // <num> <st1> <st2>, <city>, <state> <zip>-<plus4>, <country>
+                    // Ex: 1 MIRACLE MILE DR # 590, ROCHESTER, NY 14623-5851, US
+                    const formatted = results.map(a => ({
+                        latitude: a.latitude,
+                        longitude: a.longitude,
+                        formatted_address: [
+                            [a.number, a.street, a.street2].filter(Boolean).join(' '),
+                            a.city,
+                            [a.state, [a.zipcode, a.plus4].filter(Boolean).join('-')].filter(Boolean).join(' '),
+                            a.country
+                        ].filter(Boolean).join(', ')
+                    }));
+                    resolve(formatted);
+                })
+                .catch((err) => {
+                    loggerService.error({ path: '/address/format', message: `${(err as Error).message}` }).flush();
+                    reject(err);
+                });
+        });
+    }
+ 
 }
+
+
 
 // Connor Bashaw: named export is `AddressService`; default export is the singleton for endpoints/services.
 const addressService = new AddressService();

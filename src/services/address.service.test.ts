@@ -138,12 +138,51 @@ describe('AddressService.count', () => {
             ...expectedFetchCall({ zipcode: '14623' }));
     });
 
+    it('resolves with { count: 0 } when upstream returns a non array payload', async () => {
+        (global.fetch as jest.Mock).mockResolvedValue({
+            json: async () => ({ error: 'unexpected shape' }),
+        });
+
+        const result = await addressService.count({ body: { zipcode: '14623' } });
+
+        expect(result).toEqual({ count: 0 });
+        expect(global.fetch).toHaveBeenCalledWith(
+            ...expectedFetchCall({ zipcode: '14623' }));
+    });
+
+    it('rejects when the request has no body property and does not call fetch', async () => {
+        await expect(
+            addressService.count({})
+        ).rejects.toMatchObject({ message: 'Request body is required.' });
+
+        expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it('rejects when no request object is passed and does not call fetch', async () => {
+        await expect(
+            addressService.count(undefined)
+        ).rejects.toMatchObject({ message: 'Request body is required.' });
+
+        expect(global.fetch).not.toHaveBeenCalled();
+    });
+
     it('rejects when fetch fails', async () => {
         (global.fetch as jest.Mock).mockRejectedValue(new Error('network error'));
 
         await expect(
             addressService.count({ body: { zipcode: '14623' } })
         ).rejects.toThrow('network error');
+    });
+
+    it('rejects on network error and confirms fetch was still called', async () => {
+        (global.fetch as jest.Mock).mockRejectedValue(new Error('network error'));
+
+        await expect(
+            addressService.count({ body: { zipcode: '14623' } })
+        ).rejects.toThrow('network error');
+
+        expect(global.fetch).toHaveBeenCalledWith(
+            ...expectedFetchCall({ zipcode: '14623' }));
     });
 });
 

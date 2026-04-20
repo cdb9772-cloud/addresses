@@ -70,7 +70,7 @@ describe('AddressService.count', () => {
 });
 
 
-describe('AddressService.denormalize', () => {
+describe('AddressService.format', () => {
     const originalFetch = global.fetch;
  
     const mockAddress = {
@@ -96,22 +96,22 @@ describe('AddressService.denormalize', () => {
  
     it('rejects when no valid fields are provided', async () => {
         await expect(
-            addressService.denormalize({ body: {} })
+            addressService.format({ body: {} })
         ).rejects.toMatchObject({ message: expect.stringContaining('at least one of') });
     });
  
     it('rejects when body is missing entirely', async () => {
         await expect(
-            addressService.denormalize({})
+            addressService.format({})
         ).rejects.toMatchObject({ message: expect.stringContaining('at least one of') });
     });
  
-    it('resolves with denormalized results for a valid query', async () => {
+    it('resolves with formatted results for a valid query', async () => {
         (global.fetch as jest.Mock).mockResolvedValue({
             json: async () => [mockAddress],
         });
  
-        const result = await addressService.denormalize({ body: { street: 'MIRACLE MILE DR' } });
+        const result = await addressService.format({ body: { street: 'MIRACLE MILE DR' } });
  
         expect(result).toEqual([{
             latitude: 43.0846481,
@@ -125,7 +125,7 @@ describe('AddressService.denormalize', () => {
             json: async () => [{ ...mockAddress, street2: 'APT 2' }],
         });
  
-        const result = await addressService.denormalize({ body: { street: 'MIRACLE MILE DR' } });
+        const result = await addressService.format({ body: { street: 'MIRACLE MILE DR' } });
  
         expect(result[0].formatted_address).toBe('1 MIRACLE MILE DR APT 2, ROCHESTER, NY 14623-5851, US');
     });
@@ -135,7 +135,7 @@ describe('AddressService.denormalize', () => {
             json: async () => [{ ...mockAddress, plus4: '' }],
         });
  
-        const result = await addressService.denormalize({ body: { zipcode: '14623' } });
+        const result = await addressService.format({ body: { zipcode: '14623' } });
  
         expect(result[0].formatted_address).toBe('1 MIRACLE MILE DR, ROCHESTER, NY 14623, US');
     });
@@ -146,7 +146,7 @@ describe('AddressService.denormalize', () => {
             json: async () => [mockAddress, second],
         });
  
-        const result = await addressService.denormalize({ body: { street: 'MIRACLE MILE DR' } });
+        const result = await addressService.format({ body: { street: 'MIRACLE MILE DR' } });
  
         expect(result).toHaveLength(2);
         expect(result[0].latitude).toBe(43.0846481);
@@ -158,7 +158,7 @@ describe('AddressService.denormalize', () => {
             json: async () => [],
         });
  
-        const result = await addressService.denormalize({ body: { zipcode: '00000' } });
+        const result = await addressService.format({ body: { zipcode: '00000' } });
  
         expect(result).toEqual([]);
     });
@@ -167,7 +167,7 @@ describe('AddressService.denormalize', () => {
         (global.fetch as jest.Mock).mockRejectedValue(new Error('network error'));
  
         await expect(
-            addressService.denormalize({ body: { zipcode: '14623' } })
+            addressService.format({ body: { zipcode: '14623' } })
         ).rejects.toThrow('network error');
     });
 });

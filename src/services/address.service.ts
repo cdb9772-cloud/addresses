@@ -114,15 +114,15 @@ export class AddressService {
     // }
 
 
-    public async denormalize(addressRequest?: any): Promise<any> {
+    public async format(addressRequest?: any): Promise<any> {
         return new Promise<any>(async (resolve, reject) => {
-            loggerService.info({ path: '/address/denormalize', 
-                                 message: 'Denormalize transaction occurred'})
+            loggerService.info({ path: '/address/format', 
+                                 message: 'format transaction occurred'})
                                  .flush();
             const body = addressRequest?.body ?? {};
             const FIELDS = ['number', 'street', 'city', 'state', 'zipcode'];
             if (!addressRequest?.body) {
-                loggerService.warning({ path: '/address/denormalize',
+                loggerService.warning({ path: '/address/format',
                                         message: 'Request body is missing or null' })
                                         .flush();
                 return reject({ message: `Request body must include at least one of: ${FIELDS.join(', ')}.` });
@@ -131,7 +131,7 @@ export class AddressService {
             if (!(FIELDS.some( f => body[f] !== undefined && 
                                     body[f] !== null && 
                                     body[f] !== ''))){ 
-                loggerService.warning({ path: '/address/denormalize', 
+                loggerService.warning({ path: '/address/format', 
                                         message: `Bad request: missing required fields.}` })
                                         .flush();
                 return reject({ message: `Request body must include at least one of: ${FIELDS.join(', ')}.` });
@@ -141,7 +141,7 @@ export class AddressService {
                 .then((response) => {
                     if (!Array.isArray(response)) {
                         loggerService.warning({ 
-                            path: '/address/denormalize', 
+                            path: '/address/format', 
                             message: 'Upstream returned a nonarray response. Empty fallback' })
                             .flush();
                     }
@@ -149,7 +149,7 @@ export class AddressService {
                     // formatted address looks like:
                     // <num> <st1> <st2>, <city>, <state> <zip>-<plus4>, <country>
                     // Ex: 1 MIRACLE MILE DR # 590, ROCHESTER, NY 14623-5851, US
-                    const denormalized = results.map(a => ({
+                    const formatted = results.map(a => ({
                         latitude: a.latitude,
                         longitude: a.longitude,
                         formatted_address: [
@@ -159,10 +159,10 @@ export class AddressService {
                             a.country
                         ].filter(Boolean).join(', ')
                     }));
-                    resolve(denormalized);
+                    resolve(formatted);
                 })
                 .catch((err) => {
-                    loggerService.error({ path: '/address/denormalize', message: `${(err as Error).message}` }).flush();
+                    loggerService.error({ path: '/address/format', message: `${(err as Error).message}` }).flush();
                     reject(err);
                 });
         });

@@ -28,8 +28,8 @@ class AddressEndpoint extends baseEndpoint {
             });
     }
 
-    private denormalize_post(req: Request, res: Response, _next: NextFunction) {
-        addressService.denormalize(req)
+    private format_post(req: Request, res: Response, _next: NextFunction) {
+        addressService.format(req)
             .then((response) => {
                 res.status(200).send(responseWrapper(RESPONSE_STATUS_OK, RESPONSE_EVENT_READ, response));
             }).catch((err) => {

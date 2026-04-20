@@ -69,7 +69,6 @@ describe('AddressService.count', () => {
     });
 });
 
-<<<<<<< HEAD
 
 describe('AddressService.format', () => {
     const originalFetch = global.fetch;

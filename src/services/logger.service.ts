@@ -91,7 +91,7 @@ class Logger {
         //TODO: Implement logic to send log to a log aggregattion service like Prometheus | Grafana Loki.
     }
 
-    private log(logType: ILoggerBody, level: string, logKeyPairs?: {}): void {
+    private log(logType: ILoggerBody, level: string, logKeyPairs?: object): void {
         const keySetValues = this.parseLogKeyPairs(logKeyPairs);
         const logMessage = `[time]=${this.timeStamp()} [level]=${level} [message]='${logType.message}' ${keySetValues}[path]=${logType.path} [execution_time]=${this.executionTime()}ms`;
 

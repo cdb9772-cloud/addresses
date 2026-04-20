@@ -38,8 +38,8 @@ class AddressEndpoint extends baseEndpoint {
             });
     }
 
-    
-    private distance_post(req: Request, res: Response, next: NextFunction) {
+
+    private distance_post(req: Request, res: Response, _next: NextFunction) {
         addressService.distance(req)
             .then((response) => {
                 res.status(200).send(responseWrapper(RESPONSE_STATUS_OK, RESPONSE_EVENT_READ, response));

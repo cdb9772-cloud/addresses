@@ -32,6 +32,15 @@ export class AddressService {
 
     public async count(addressRequest?: any): Promise<any> {
         return new Promise<any>(async (resolve, reject) => {
+            loggerService.info({ path: '/address/count',
+                                 message: 'Count transaction occurred' })
+                                 .flush();
+            if (!addressRequest?.body) {
+                loggerService.warning({ path: '/address/count', 
+                                        message: 'Request body is missing or null' })
+                                        .flush();
+                return reject({ message: 'Request body is required.' });
+            }
             this.request(addressRequest)
                 .then((response) => {
                     // Connor Bashaw: was `response.size()` — invalid on parsed JSON arrays.
@@ -40,6 +49,7 @@ export class AddressService {
                     });
                 })
                 .catch((err) => {
+                    loggerService.error({ path: '/address/count', message: `${(err as Error).message}` }).flush();
                     reject(err);
                 });
         });
@@ -47,6 +57,15 @@ export class AddressService {
 
     public async request(addressRequest?: any): Promise<any> {
         return new Promise<any>(async (resolve, reject) => {
+            loggerService.info({ path: '/address/request',
+                                 message: 'Request transaction occurred' })
+                                 .flush();
+            if (!addressRequest?.body) {
+                loggerService.warning({ path: '/address/request', 
+                                        message: 'Request body is missing or null' })  
+                                        .flush();
+                return reject({ message: 'Request body is required.' });
+            }
             fetch(AddressService.fetchUrl, {
                 method: "POST",
                 // Connor Bashaw: explicit JSON header for POST body (pairs with JSON.stringify below).
@@ -97,17 +116,35 @@ export class AddressService {
 
     public async denormalize(addressRequest?: any): Promise<any> {
         return new Promise<any>(async (resolve, reject) => {
+            loggerService.info({ path: '/address/denormalize', 
+                                 message: 'Denormalize transaction occurred'})
+                                 .flush();
             const body = addressRequest?.body ?? {};
+            if (!addressRequest?.body) {
+                loggerService.warning({ path: '/address/denormalize',
+                                        message: 'Request body is missing or null' })
+                                        .flush();
+                return reject({ message: 'Request body is required.' });
+            }
             const FIELDS = ['number', 'street', 'city', 'state', 'zipcode'];
  
             if (!(FIELDS.some( f => body[f] !== undefined && 
                                     body[f] !== null && 
-                                    body[f] !== ''))) 
+                                    body[f] !== ''))){ 
+                loggerService.warning({ path: '/address/denormalize', 
+                                        message: `Bad request: missing required fields.}` })
+                                        .flush();
                 return reject({ message: `Request body must include at least one of: ${FIELDS.join(', ')}.` });
-            
+            }
  
             this.request(addressRequest)
                 .then((response) => {
+                    if (!Array.isArray(response)) {
+                        loggerService.warning({ 
+                            path: '/address/denormalize', 
+                            message: 'Upstream returned a nonarray response. Empty fallback' })
+                            .flush();
+                    }
                     const results = Array.isArray(response) ? response : [];
                     // formatted address looks like:
                     // <num> <st1> <st2>, <city>, <state> <zip>-<plus4>, <country>

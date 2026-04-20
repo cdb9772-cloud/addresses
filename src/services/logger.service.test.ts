@@ -2,6 +2,10 @@ process.env.ENV = "dev"
 
 import loggerService from './logger.service';
 
+beforeEach(() => {
+    loggerService.clearCache();
+});
+
 describe('Logger Service - Log Levels', () => {
 
     it('should call info() and flush() without throwing', () => {
@@ -49,12 +53,17 @@ describe('Logger Service - Stdout Output', () => {
 
     it('should write to stdout when flush() is called', () => {
         loggerService.info({ message: 'stdout test', path: '/test' }).flush();
-        expect(stdoutSpy).toHaveBeenCalled();
+        expect(stdoutSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not write to stdout before flush() is called', () => {
+        loggerService.info({ message: 'not yet', path: '/test' });
+        expect(stdoutSpy).not.toHaveBeenCalled();
     });
 
     it('should include the log level in the output', () => {
         loggerService.error({ message: 'level check', path: '/test' }).flush();
-        const output = stdoutSpy.mock.calls[stdoutSpy.mock.calls.length - 1][0] as string;
+        const output = stdoutSpy.mock.calls[0][0] as string;
         expect(output).toContain('[level]=error');
     });
 
@@ -80,6 +89,22 @@ describe('Logger Service - Stdout Output', () => {
         loggerService.info({ message: 'exec time check', path: '/test' }).flush();
         const output = stdoutSpy.mock.calls[0][0] as string;
         expect(output).toContain('[execution_time]=');
+    });
+
+    it('should include a positive and or zero execution_time in the output', () => {
+        loggerService.info({ message: 'exec time check', path: '/test' }).flush();
+        const output = stdoutSpy.mock.calls[0][0] as string;
+        expect(output).toContain('[execution_time]=');
+        const match = output.match(/\[execution_time\]=(\d+)ms/);
+        expect(match).not.toBeNull();
+        expect(Number(match![1])).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should clear the cache after flush() so a second flush writes nothing', () => {
+        loggerService.info({ message: 'once', path: '/test' }).flush();
+        stdoutSpy.mockClear();
+        loggerService.flush();
+        expect(stdoutSpy).not.toHaveBeenCalled();
     });
 
 });
@@ -124,7 +149,28 @@ describe('Logger Service - Key Pairs', () => {
 });
 
 describe('Logger Service - Chaining', () => {
+    let stdoutSpy: jest.SpyInstance;
+ 
+    beforeEach(() => {
+        stdoutSpy = jest.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    });
+ 
+    afterEach(() => {
+        stdoutSpy.mockRestore();
+    });
 
+    it('should return the Logger instance from log level methods to enable chaining', () => {
+        const result = loggerService.info({ message: 'chain test', path: '/test' });
+        expect(result).toBe(loggerService);
+    });
+
+    it('should buffer multiple log entries before a single flush', () => {
+        loggerService.info({ message: 'first', path: '/test' });
+        loggerService.warning({ message: 'second', path: '/test' });
+        loggerService.flush();
+        expect(stdoutSpy).toHaveBeenCalledTimes(2);
+    });
+ 
     it('should support method chaining before flush()', () => {
         expect(() => {
             loggerService

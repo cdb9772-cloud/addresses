@@ -69,6 +69,7 @@ describe('AddressService.count', () => {
     });
 });
 
+<<<<<<< HEAD
 
 describe('AddressService.format', () => {
     const originalFetch = global.fetch;
@@ -169,5 +170,102 @@ describe('AddressService.format', () => {
         await expect(
             addressService.format({ body: { zipcode: '14623' } })
         ).rejects.toThrow('network error');
+            });
+});
+
+describe('AddressService.distance', () => {
+    it('returns both miles and kilometers when unit is not provided', async () => {
+        const result = await addressService.distance({
+            body: {
+                lat1: 40.7128,
+                lon1: -74.0060,
+                lat2: 34.0522,
+                lon2: -118.2437
+            }
+        });
+
+        expect(result).toHaveProperty('distance.kilometers');
+        expect(result).toHaveProperty('distance.miles');
+        expect(result.distance.kilometers).toBeGreaterThan(3900);
+        expect(result.distance.kilometers).toBeLessThan(4000);
+        expect(result.distance.miles).toBeGreaterThan(2400);
+        expect(result.distance.miles).toBeLessThan(2500);
+    });
+
+    it('returns kilometers only when unit is km', async () => {
+        const result = await addressService.distance({
+            body: {
+                lat1: 43.1566,
+                lon1: -77.6088,
+                lat2: 42.8864,
+                lon2: -78.8784,
+                unit: 'km'
+            }
+        });
+
+        expect(result).toEqual({
+            distance: {
+                kilometers: expect.any(Number)
+            }
+        });
+        expect(result.distance).not.toHaveProperty('miles');
+    });
+
+    it('returns miles only when unit is mi', async () => {
+        const result = await addressService.distance({
+            body: {
+                lat1: 43.1566,
+                lon1: -77.6088,
+                lat2: 42.8864,
+                lon2: -78.8784,
+                unit: 'mi'
+            }
+        });
+
+        expect(result).toEqual({
+            distance: {
+                miles: expect.any(Number)
+            }
+        });
+        expect(result.distance).not.toHaveProperty('kilometers');
+    });
+
+    it('rejects when a coordinate is null or missing', async () => {
+        await expect(
+            addressService.distance({
+                body: {
+                    lat1: null,
+                    lon1: -77.6088,
+                    lat2: 42.8864,
+                    lon2: -78.8784
+                }
+            })
+        ).rejects.toThrow('lat1 is required');
+    });
+
+    it('rejects when unit is unsupported', async () => {
+        await expect(
+            addressService.distance({
+                body: {
+                    lat1: 43.1566,
+                    lon1: -77.6088,
+                    lat2: 42.8864,
+                    lon2: -78.8784,
+                    unit: 'meters'
+                }
+            })
+        ).rejects.toThrow("unit must be either 'km' or 'mi'");
+    });
+
+    it('rejects when an unexpected exception occurs while reading input', async () => {
+        const requestWithThrowingBody = Object.defineProperty({}, 'body', {
+            get() {
+                throw new Error('body getter failed');
+            }
+        });
+
+        await expect(
+            addressService.distance(requestWithThrowingBody)
+        ).rejects.toThrow('body getter failed');
     });
 });

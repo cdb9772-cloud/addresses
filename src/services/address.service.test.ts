@@ -25,6 +25,99 @@ describe('AddressService.countItemsFromResponsePayload', () => {
     });
 });
 
+describe('AddressService.request', () => {
+    const originalFetch = global.fetch;
+ 
+    const mockAddress = {
+        number: '1',
+        street: 'MIRACLE MILE DR',
+        street2: '',
+        city: 'ROCHESTER',
+        state: 'NY',
+        zipcode: '14623',
+        plus4: '5851',
+        country: 'US',
+        latitude: 43.0846481,
+        longitude: -77.6327362,
+    };
+ 
+    beforeEach(() => {
+        global.fetch = jest.fn();
+    });
+ 
+    afterEach(() => {
+        global.fetch = originalFetch;
+    });
+ 
+    it('resolves with the parsed JSON body and calls fetch with correct args', async () => {
+        (global.fetch as jest.Mock).mockResolvedValue({
+            json: async () => [mockAddress],
+        });
+ 
+        const result = await addressService.request({ body: { zipcode: '14623' } });
+ 
+        expect(result).toEqual([mockAddress]);
+        expect(global.fetch).toHaveBeenCalledWith(
+            'https://address.nerdstacks.org/',
+            expect.objectContaining({
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ zipcode: '14623' }),
+            })
+        );
+    });
+ 
+    it('sends all provided body fields correctly stringified', async () => {
+        const body = { street: 'MIRACLE MILE DR', city: 'ROCHESTER', state: 'NY' };
+        (global.fetch as jest.Mock).mockResolvedValue({ json: async () => [mockAddress] });
+ 
+        await addressService.request({ body });
+ 
+        expect(global.fetch).toHaveBeenCalledWith(
+            'https://address.nerdstacks.org/',
+            expect.objectContaining({
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+            })
+        );
+    });
+ 
+    it('rejects when the request body is null and does not call fetch', async () => {
+        await expect(
+            addressService.request({ body: null })
+        ).rejects.toMatchObject({ message: 'Request body is required.' });
+ 
+        expect(global.fetch).not.toHaveBeenCalled();
+    });
+ 
+    it('rejects when no request object is passed and does not call fetch', async () => {
+        await expect(
+            addressService.request(undefined)
+        ).rejects.toMatchObject({ message: 'Request body is required.' });
+ 
+        expect(global.fetch).not.toHaveBeenCalled();
+    });
+ 
+    it('rejects on network error and confirms fetch was still called', async () => {
+        (global.fetch as jest.Mock).mockRejectedValue(new Error('connection refused'));
+ 
+        await expect(
+            addressService.request({ body: { zipcode: '14623' } })
+        ).rejects.toThrow('connection refused');
+ 
+        expect(global.fetch).toHaveBeenCalledWith(
+            'https://address.nerdstacks.org/',
+            expect.objectContaining({
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ zipcode: '14623' }),
+            })
+        );
+    });
+});
+
+
 describe('AddressService.count', () => {
     const originalFetch = global.fetch;
 

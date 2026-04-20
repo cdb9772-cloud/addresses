@@ -25,6 +25,16 @@ describe('AddressService.countItemsFromResponsePayload', () => {
     });
 });
 
+const expectedFetchCall = (body: object) => [
+    'https://address.nerdstacks.org/',
+    expect.objectContaining({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+    }),
+];
+
+
 describe('AddressService.request', () => {
     const originalFetch = global.fetch;
  
@@ -58,13 +68,7 @@ describe('AddressService.request', () => {
  
         expect(result).toEqual([mockAddress]);
         expect(global.fetch).toHaveBeenCalledWith(
-            'https://address.nerdstacks.org/',
-            expect.objectContaining({
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ zipcode: '14623' }),
-            })
-        );
+            ...expectedFetchCall({ zipcode: '14623' }));
     });
  
     it('sends all provided body fields correctly stringified', async () => {
@@ -73,14 +77,7 @@ describe('AddressService.request', () => {
  
         await addressService.request({ body });
  
-        expect(global.fetch).toHaveBeenCalledWith(
-            'https://address.nerdstacks.org/',
-            expect.objectContaining({
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body),
-            })
-        );
+        expect(global.fetch).toHaveBeenCalledWith(...expectedFetchCall(body));
     });
  
     it('rejects when the request body is null and does not call fetch', async () => {
@@ -107,13 +104,7 @@ describe('AddressService.request', () => {
         ).rejects.toThrow('connection refused');
  
         expect(global.fetch).toHaveBeenCalledWith(
-            'https://address.nerdstacks.org/',
-            expect.objectContaining({
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ zipcode: '14623' }),
-            })
-        );
+            ...expectedFetchCall({ zipcode: '14623' }));
     });
 });
 
@@ -144,13 +135,7 @@ describe('AddressService.count', () => {
 
         expect(result).toEqual({ count: 2 });
         expect(global.fetch).toHaveBeenCalledWith(
-            'https://address.nerdstacks.org/',
-            expect.objectContaining({
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ zipcode: '14623' }),
-            })
-        );
+            ...expectedFetchCall({ zipcode: '14623' }));
     });
 
     it('rejects when fetch fails', async () => {
@@ -216,13 +201,7 @@ describe('AddressService.format', () => {
             formatted_address: '1 MIRACLE MILE DR, ROCHESTER, NY 14623-5851, US',
         }]);
         expect(global.fetch).toHaveBeenCalledWith(
-            'https://address.nerdstacks.org/',
-            expect.objectContaining({
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ street: 'MIRACLE MILE DR' }),
-            })
-        );
+            ...expectedFetchCall({ street: 'MIRACLE MILE DR' }));
     });
  
     it('includes street2 in formatted_address when present', async () => {
@@ -234,13 +213,7 @@ describe('AddressService.format', () => {
  
         expect(result[0].formatted_address).toBe('1 MIRACLE MILE DR APT 2, ROCHESTER, NY 14623-5851, US');
         expect(global.fetch).toHaveBeenCalledWith(
-            'https://address.nerdstacks.org/',
-            expect.objectContaining({
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ street: 'MIRACLE MILE DR' }),
-            })
-        );
+            ...expectedFetchCall({ street: 'MIRACLE MILE DR' }));
     });
  
     it('omits plus4 from formatted_address when empty', async () => {
@@ -252,13 +225,7 @@ describe('AddressService.format', () => {
  
         expect(result[0].formatted_address).toBe('1 MIRACLE MILE DR, ROCHESTER, NY 14623, US');
         expect(global.fetch).toHaveBeenCalledWith(
-            'https://address.nerdstacks.org/',
-            expect.objectContaining({
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ zipcode: '14623' }),
-            })
-        );
+            ...expectedFetchCall({ zipcode: '14623' }));
     });
  
     it('returns multiple results when upstream returns multiple', async () => {
@@ -273,13 +240,7 @@ describe('AddressService.format', () => {
         expect(result[0].latitude).toBe(43.0846481);
         expect(result[1].latitude).toBe(43.085);
         expect(global.fetch).toHaveBeenCalledWith(
-            'https://address.nerdstacks.org/',
-            expect.objectContaining({
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ street: 'MIRACLE MILE DR' }),
-            })
-        );
+            ...expectedFetchCall({ street: 'MIRACLE MILE DR' }));
     });
  
     it('returns empty array when upstream returns no results', async () => {
@@ -291,13 +252,7 @@ describe('AddressService.format', () => {
  
         expect(result).toEqual([]);
         expect(global.fetch).toHaveBeenCalledWith(
-            'https://address.nerdstacks.org/',
-            expect.objectContaining({
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ zipcode: '00000' }),
-            })
-        );
+            ...expectedFetchCall({ zipcode: '00000' }));
     });
  
     it('rejects on network error and confirms fetch was still called', async () => {
@@ -308,13 +263,7 @@ describe('AddressService.format', () => {
         ).rejects.toThrow('network error');
  
         expect(global.fetch).toHaveBeenCalledWith(
-            'https://address.nerdstacks.org/',
-            expect.objectContaining({
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ zipcode: '14623' }),
-            })
-        );
+            ...expectedFetchCall({ zipcode: '14623' }));
     });
 });
 
@@ -448,13 +397,7 @@ describe('AddressService.zipcode', () => {
  
         expect(result).toEqual({ city: 'ROCHESTER' });
         expect(global.fetch).toHaveBeenCalledWith(
-            'https://address.nerdstacks.org/',
-            expect.objectContaining({
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ zipcode: '14623' }),
-            })
-        );
+            ...expectedFetchCall({ zipcode: '14623' }));
     });
  
     it('rejects when no request body is provided and does not call fetch', async () => {
@@ -499,16 +442,10 @@ describe('AddressService.zipcode', () => {
         ).rejects.toMatchObject({ message: 'no city found matching zipcode.' });
  
         expect(global.fetch).toHaveBeenCalledWith(
-            'https://address.nerdstacks.org/',
-            expect.objectContaining({
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ zipcode: '14623' }),
-            })
-        );
+            ...expectedFetchCall({ zipcode: '14623' }));
     });
  
-    it('rejects on non array upstream response and confirms fetch was called', async () => {
+    it('rejects on non-array upstream response and confirms fetch was called', async () => {
         (global.fetch as jest.Mock).mockResolvedValue({
             json: async () => null,
         });
@@ -518,13 +455,7 @@ describe('AddressService.zipcode', () => {
         ).rejects.toMatchObject({ message: 'no city found matching zipcode.' });
  
         expect(global.fetch).toHaveBeenCalledWith(
-            'https://address.nerdstacks.org/',
-            expect.objectContaining({
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ zipcode: '14623' }),
-            })
-        );
+            ...expectedFetchCall({ zipcode: '14623' }));
     });
  
     it('rejects when the first result has no city field and confirms fetch was called', async () => {
@@ -537,13 +468,7 @@ describe('AddressService.zipcode', () => {
         ).rejects.toMatchObject({ message: 'no city found matching zipcode.' });
  
         expect(global.fetch).toHaveBeenCalledWith(
-            'https://address.nerdstacks.org/',
-            expect.objectContaining({
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ zipcode: '14623' }),
-            })
-        );
+            ...expectedFetchCall({ zipcode: '14623' }));
     });
  
     it('rejects on network error and confirms fetch was still called', async () => {
@@ -554,12 +479,6 @@ describe('AddressService.zipcode', () => {
         ).rejects.toThrow('timeout');
  
         expect(global.fetch).toHaveBeenCalledWith(
-            'https://address.nerdstacks.org/',
-            expect.objectContaining({
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ zipcode: '14623' }),
-            })
-        );
+            ...expectedFetchCall({ zipcode: '14623' }));
     });
 });

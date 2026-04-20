@@ -57,9 +57,43 @@ describe('200 OK', () => {
         expect(res.body.body.distance).toHaveProperty('kilometers');
         expect(res.body.body.distance).toHaveProperty('miles');
     });
+
+    it('POST /address/format returns a 200 with formatted addresses', async () => {
+        mockFetchSuccess([{
+            number: '1', street: 'MIRACLE MILE DR', street2: '',
+            city: 'ROCHESTER', state: 'NY', zipcode: '14623',
+            plus4: '5851', country: 'US',
+            latitude: 43.0846481, longitude: -77.6327362,
+        }]);
+
+        const res = await request(app)
+            .post('/address/format')
+            .send({ zipcode: '14623' });
+
+        expect(res.status).toBe(200);
+        expect(res.body.status).toBe('OK');
+        expect(Array.isArray(res.body.body)).toBe(true);
+        expect(res.body.body[0]).toHaveProperty('formatted_address');
+        expect(res.body.body[0]).toHaveProperty('latitude');
+        expect(res.body.body[0]).toHaveProperty('longitude');
+    });
+
+    it('POST /address/zipcode returns a 200 with the city name', async () => {
+        mockFetchSuccess([{ city: 'ROCHESTER' }]);
+
+        const res = await request(app)
+            .post('/address/zipcode')
+            .send({ zipcode: '14623' });
+
+        expect(res.status).toBe(200);
+        expect(res.body.status).toBe('OK');
+        expect(res.body.body).toEqual({ city: 'ROCHESTER' });
+    });
 });
 
 describe('400 Bad Request', () => {
+    const originalFetch = global.fetch;
+    afterEach(() => { global.fetch = originalFetch; });
 
     it('returns a 400 for a POST to a route that does not exist', async () => {
         const res = await request(app)
@@ -130,6 +164,35 @@ describe('400 Bad Request', () => {
 
         expect(res.status).toBe(400);
         expect(res.body.error).toBeDefined();
+    });
+
+    it('returns 400 for /address/format when no valid fields are provided', async () => {
+        const res = await request(app)
+            .post('/address/format')
+            .send({ foo: 'bar' });
+ 
+        expect(res.status).toBe(400);
+        expect(res.body.status).toBe('FAILED');
+    });
+ 
+    it('returns 400 for /address/zipcode when zipcode field is missing', async () => {
+        const res = await request(app)
+            .post('/address/zipcode')
+            .send({ city: 'ROCHESTER' });
+ 
+        expect(res.status).toBe(400);
+        expect(res.body.status).toBe('FAILED');
+    });
+ 
+    it('returns 400 for /address/zipcode when no city is found for the zipcode', async () => {
+        mockFetchSuccess([]);
+ 
+        const res = await request(app)
+            .post('/address/zipcode')
+            .send({ zipcode: '00000' });
+ 
+        expect(res.status).toBe(400);
+        expect(res.body.status).toBe('FAILED');
     });
 });
 

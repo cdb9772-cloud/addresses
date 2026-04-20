@@ -230,6 +230,54 @@ export class AddressService {
                 });
         });
     }
+
+    //renny: Add a new endpoint that accepts in a request with a zip code and responds with the city name that the zip code is associated with.
+    public async zipcode(addressRequest?: any): Promise<any> {
+        return new Promise<any>(async (resolve, reject) => {
+            // log someone calling endpoint
+            loggerService.info({ path: '/address/zipcode', message: 'Looking up city for zipcode:' }).flush();
+
+            // rejects if no body sent
+            if (!addressRequest?.body) {
+                loggerService.warning({ path: '/address/zipcode', message: 'No body included in request' }).flush();
+                return reject({ message: 'Request body is required.' });
+            }
+            const zipcode = addressRequest.body.zipcode;
+
+            // require field
+            if (!zipcode) {
+                loggerService.warning({ path: '/address/zipcode', message: 'zipcode is missing or empty' }).flush();
+                return reject({ message: 'zipcode required!' });
+            }
+
+            fetch(AddressService.fetchUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ zipcode: zipcode })
+            })
+            .then(async (response) => {
+                const data = await response.json();
+
+                // if the array empty=nom atch
+                if (!Array.isArray(data) || data.length === 0) {
+                    loggerService.warning({ path: '/address/zipcode', message: 'no results for zipcode' }).flush();
+                    return reject({ message: 'no city found matching zipcode.' });
+                }
+                // get city and make sure exist
+                const city = data[0].city;
+                if (!city) {
+                    loggerService.warning({ path: '/address/zipcode', message: 'result has no city field' }).flush();
+                    return reject({ message: 'no city found matching zipcode.' });
+                }
+                resolve({ city: city });
+            })
+            .catch((err) => {
+                loggerService.error({ path: '/address/zipcode', message: (err as Error).message }).flush();
+                reject(err);
+            });
+
+        });
+    }
  
 }
 

@@ -17,7 +17,7 @@ import loggerService from "./logger.service";
 
 export class AddressService {
     // Connor Bashaw: HTTPS URL per assignment; old http + :3000 was incorrect for production API.
-    private static fetchUrl = 'https://address.nerdstacks.org/';
+    private static fetchUrl = 'https://ischool.gccis.rit.edu/addresses/';
 
     constructor() { }
 

@@ -93,7 +93,47 @@ export class AddressService {
     //     // convert and return distance in KM
     //     return R * c;
     // }
+
+
+    public async denormalize(addressRequest?: any): Promise<any> {
+        return new Promise<any>(async (resolve, reject) => {
+            const body = addressRequest?.body ?? {};
+            const FIELDS = ['number', 'street', 'city', 'state', 'zipcode'];
+ 
+            if (!(FIELDS.some( f => body[f] !== undefined && 
+                                    body[f] !== null && 
+                                    body[f] !== ''))) 
+                return reject({ message: `Request body must include at least one of: ${FIELDS.join(', ')}.` });
+            
+ 
+            this.request(addressRequest)
+                .then((response) => {
+                    const results = Array.isArray(response) ? response : [];
+                    // formatted address looks like:
+                    // <num> <st1> <st2>, <city>, <state> <zip>-<plus4>, <country>
+                    // Ex: 1 MIRACLE MILE DR # 590, ROCHESTER, NY 14623-5851, US
+                    const denormalized = results.map(a => ({
+                        latitude: a.latitude,
+                        longitude: a.longitude,
+                        formatted_address: [
+                            [a.number, a.street, a.street2].filter(Boolean).join(' '),
+                            a.city,
+                            [a.state, [a.zipcode, a.plus4].filter(Boolean).join('-')].filter(Boolean).join(' '),
+                            a.country
+                        ].filter(Boolean).join(', ')
+                    }));
+                    resolve(denormalized);
+                })
+                .catch((err) => {
+                    loggerService.error({ path: '/address/denormalize', message: `${(err as Error).message}` }).flush();
+                    reject(err);
+                });
+        });
+    }
+ 
 }
+
+
 
 // Connor Bashaw: named export is `AddressService`; default export is the singleton for endpoints/services.
 const addressService = new AddressService();

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 import fs from 'fs';
 import express, { NextFunction, Request, Response } from 'express';
 import createHttpError from 'http-errors';

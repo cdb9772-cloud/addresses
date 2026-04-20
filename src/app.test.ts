@@ -41,6 +41,22 @@ describe('200 OK', () => {
         expect(res.status).toBe(200);
         expect(res.body.body).toEqual({ count: 2 });
     });
+
+    it('POST /address/distance returns a 200 with miles and kilometers', async () => {
+        const res = await request(app)
+            .post('/address/distance')
+            .send({
+                lat1: 43.1566,
+                lon1: -77.6088,
+                lat2: 42.8864,
+                lon2: -78.8784
+            });
+
+        expect(res.status).toBe(200);
+        expect(res.body.status).toBe('OK');
+        expect(res.body.body.distance).toHaveProperty('kilometers');
+        expect(res.body.body.distance).toHaveProperty('miles');
+    });
 });
 
 describe('400 Bad Request', () => {
@@ -77,6 +93,20 @@ describe('400 Bad Request', () => {
 
         expect(res.status).toBe(400);
         expect(res.body.error).toBeDefined();
+    });
+
+    it('returns 400 for /address/distance when invalid data is passed', async () => {
+        const res = await request(app)
+            .post('/address/distance')
+            .send({
+                lat1: null,
+                lon1: -77.6088,
+                lat2: 42.8864,
+                lon2: -78.8784
+            });
+
+        expect(res.status).toBe(400);
+        expect(res.body.status).toBe('FAILED');
     });
 
     it('returns 400 for a GET to /address/request (only POST is supported)', async () => {

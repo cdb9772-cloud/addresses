@@ -29,7 +29,11 @@ export class AddressService {
     public static countItemsFromResponsePayload(data: unknown): number {
         return Array.isArray(data) ? data.length : 0;
     }
+    
+    private static readonly EARTH_RADIUS_KM = 6371;
+    private static readonly KM_TO_MI = 0.621371;
 
+    
     public async count(addressRequest?: any): Promise<any> {
         return new Promise<any>(async (resolve, reject) => {
             this.request(addressRequest)
@@ -64,35 +68,93 @@ export class AddressService {
     }
 
     public async distance(addressRequest?: any): Promise<any> {
-        // Complete this
+        return new Promise<any>(async (resolve, reject) => {
+            try {
+                loggerService.info({ path: "/address/distance", message: "Distance transaction requested." }).flush();
+
+                if (!addressRequest || !addressRequest.body) {
+                    loggerService.warning({ path: "/address/distance", message: "Missing request body for distance calculation." }).flush();
+                    reject(new Error("Invalid request. A request body is required."));
+                    return;
+                }
+
+                const { lat1, lon1, lat2, lon2, unit } = addressRequest.body;
+                const startLatitude = this.parseCoordinate(lat1, "lat1");
+                const startLongitude = this.parseCoordinate(lon1, "lon1");
+                const endLatitude = this.parseCoordinate(lat2, "lat2");
+                const endLongitude = this.parseCoordinate(lon2, "lon2");
+
+                const normalizedUnit = this.normalizeUnit(unit);
+                const kilometers = this.getDistance(startLatitude, startLongitude, endLatitude, endLongitude);
+                const miles = kilometers * AddressService.KM_TO_MI;
+
+                const response: { kilometers?: number; miles?: number } = {};
+                if (!normalizedUnit || normalizedUnit === "km") {
+                    response.kilometers = Number(kilometers.toFixed(3));
+                }
+
+                if (!normalizedUnit || normalizedUnit === "mi") {
+                    response.miles = Number(miles.toFixed(3));
+                }
+
+                loggerService.info({ path: "/address/distance", message: "Distance transaction completed." }).flush();
+                resolve({ distance: response });
+            } catch (err) {
+                loggerService.error({ path: "/address/distance", message: `${(err as Error).message}` }).flush();
+                reject(err);
+            }
+        });
     }
 
-    // private async getDistance(lat1: string, lon1: string, lat2: string, lon2: string) {
-    //     // Defining this function inside of this private method means it's
-    //     // not accessible outside of it, which is perfect for encapsulation.
-    //     const toRadians = (degrees: string) => {
-    //         return degrees * (Math.PI / 180);
-    //     }
+    private parseCoordinate(value: unknown, field: string): number {
+        if (value === null || value === undefined || value === "") {
+            loggerService.warning({ path: "/address/distance", message: `Missing coordinate parameter: ${field}.` }).flush();
+            throw new Error(`Invalid request. ${field} is required.`);
+        }
 
-    //     // Radius of the Earth in KM
-    //     const R = 6371;
+        const parsed = Number(value);
+        if (!Number.isFinite(parsed)) {
+            loggerService.warning({ path: "/address/distance", message: `Invalid coordinate provided for ${field}: ${value}` }).flush();
+            throw new Error(`Invalid request. ${field} must be a numeric value.`);
+        }
 
-    //     // Convert Lat and Longs to Radians
-    //     const dLat = toRadians(lat2 - lat1);
-    //     const dLon = toRadians(lon2 - lon1);
+        return parsed;
+    }
 
-    //     // Haversine Formula to calculate the distance between two locations
-    //     // on a sphere.
-    //     const a =
-    //         Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    //         Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) *
-    //         Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    private normalizeUnit(value: unknown): "km" | "mi" | undefined {
+        if (value === null || value === undefined || value === "") {
+            return undefined;
+        }
 
-    //     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        if (typeof value !== "string") {
+            loggerService.warning({ path: "/address/distance", message: "Distance unit was provided in an invalid format." }).flush();
+            throw new Error("Invalid request. unit must be either 'km' or 'mi'.");
+        }
 
-    //     // convert and return distance in KM
-    //     return R * c;
-    // }
+        const normalized = value.trim().toLowerCase();
+        if (normalized !== "km" && normalized !== "mi") {
+            loggerService.warning({ path: "/address/distance", message: `Unsupported distance unit provided: ${value}` }).flush();
+            throw new Error("Invalid request. unit must be either 'km' or 'mi'.");
+        }
+
+        return normalized as "km" | "mi";
+    }
+
+    private toRadians(degrees: number): number {
+        return degrees * (Math.PI / 180);
+    }
+
+    private getDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+        const dLat = this.toRadians(lat2 - lat1);
+        const dLon = this.toRadians(lon2 - lon1);
+        const a =
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(this.toRadians(lat1)) * Math.cos(this.toRadians(lat2)) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return AddressService.EARTH_RADIUS_KM * c;
+    }
 }
 
 // Connor Bashaw: named export is `AddressService`; default export is the singleton for endpoints/services.

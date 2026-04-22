@@ -52,7 +52,7 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: install
+    needs: [lint, test]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -73,7 +73,7 @@ jobs:
   test:
     name: Tests
     runs-on: ubuntu-latest
-    needs: [build]
+    needs: install
     permissions:
       checks: write
       pull-requests: write

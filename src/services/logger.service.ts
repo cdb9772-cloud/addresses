@@ -4,11 +4,13 @@ class Logger {
     private cache: Array<string>;
     private host: string;
     private writeToStdOut: boolean;
+    private startTime: number;
 
     public constructor(transport: ILoggerTransports) {
         this.cache = Array<string>();
         this.host = transport.host || '';
         this.writeToStdOut = transport.writeToStdOut || true;
+        this.startTime = Date.now();
     }
 
     /**
@@ -18,7 +20,7 @@ class Logger {
      * @param fieldSet An empty object that extending the logging frame with custom structured key value pairs.
      */
     public fatal(logType: ILoggerBody, logKeyPairs: any = {}): Logger {
-        this.log(logType, 'error', logKeyPairs);
+        this.log(logType, 'fatal', logKeyPairs);
         return this;
     }
 
@@ -67,10 +69,19 @@ class Logger {
     }
 
     /**
+     * @description Clears the internal log cache amd reset startTime for executionTime
+     */
+    public clearCache(): void {
+        this.cache = [];
+        this.startTime = Date.now();
+    }
+
+    /**
      * @description write log to transport (log file, standard out or log aggregator service (i.e: datadog))
      */
     public flush(): void {
         this.writeToStandardOut();
+        this.clearCache();
     }
 
     /**
@@ -91,7 +102,7 @@ class Logger {
         //TODO: Implement logic to send log to a log aggregattion service like Prometheus | Grafana Loki.
     }
 
-    private log(logType: ILoggerBody, level: string, logKeyPairs?: {}): void {
+    private log(logType: ILoggerBody, level: string, logKeyPairs?: object): void {
         const keySetValues = this.parseLogKeyPairs(logKeyPairs);
         const logMessage = `[time]=${this.timeStamp()} [level]=${level} [message]='${logType.message}' ${keySetValues}[path]=${logType.path} [execution_time]=${this.executionTime()}ms`;
 
@@ -103,8 +114,7 @@ class Logger {
      * @returns The execution time of the request.
      */
     private executionTime(): number {
-        const startTime = new Date().getTime();
-        return new Date().getTime() - startTime;
+        return Date.now() - this.startTime;
     }
 
     /**

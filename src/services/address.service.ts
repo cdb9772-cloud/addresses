@@ -29,9 +29,22 @@ export class AddressService {
     public static countItemsFromResponsePayload(data: unknown): number {
         return Array.isArray(data) ? data.length : 0;
     }
+    
+    private static readonly EARTH_RADIUS_KM = 6371;
+    private static readonly KM_TO_MI = 0.621371;
 
+    
     public async count(addressRequest?: any): Promise<any> {
         return new Promise<any>(async (resolve, reject) => {
+            loggerService.info({ path: '/address/count',
+                                 message: 'Count transaction occurred' })
+                                 .flush();
+            if (!addressRequest?.body) {
+                loggerService.warning({ path: '/address/count', 
+                                        message: 'Request body is missing or null' })
+                                        .flush();
+                return reject({ message: 'Request body is required.' });
+            }
             this.request(addressRequest)
                 .then((response) => {
                     // Connor Bashaw: was `response.size()` — invalid on parsed JSON arrays.
@@ -40,6 +53,7 @@ export class AddressService {
                     });
                 })
                 .catch((err) => {
+                    loggerService.error({ path: '/address/count', message: `${(err as Error).message}` }).flush();
                     reject(err);
                 });
         });
@@ -47,6 +61,15 @@ export class AddressService {
 
     public async request(addressRequest?: any): Promise<any> {
         return new Promise<any>(async (resolve, reject) => {
+            loggerService.info({ path: '/address/request',
+                                 message: 'Request transaction occurred' })
+                                 .flush();
+            if (!addressRequest?.body) {
+                loggerService.warning({ path: '/address/request', 
+                                        message: 'Request body is missing or null' })  
+                                        .flush();
+                return reject({ message: 'Request body is required.' });
+            }
             fetch(AddressService.fetchUrl, {
                 method: "POST",
                 // Connor Bashaw: explicit JSON header for POST body (pairs with JSON.stringify below).
@@ -64,36 +87,201 @@ export class AddressService {
     }
 
     public async distance(addressRequest?: any): Promise<any> {
-        // Complete this
+        return new Promise<any>(async (resolve, reject) => {
+            try {
+                loggerService.info({ path: "/address/distance", message: "Distance transaction requested." }).flush();
+
+                if (!addressRequest || !addressRequest.body) {
+                    loggerService.warning({ path: "/address/distance", message: "Missing request body for distance calculation." }).flush();
+                    reject(new Error("Invalid request. A request body is required."));
+                    return;
+                }
+
+                const { lat1, lon1, lat2, lon2, unit } = addressRequest.body;
+                const startLatitude = this.parseCoordinate(lat1, "lat1");
+                const startLongitude = this.parseCoordinate(lon1, "lon1");
+                const endLatitude = this.parseCoordinate(lat2, "lat2");
+                const endLongitude = this.parseCoordinate(lon2, "lon2");
+
+                const normalizedUnit = this.normalizeUnit(unit);
+                const kilometers = this.getDistance(startLatitude, startLongitude, endLatitude, endLongitude);
+                const miles = kilometers * AddressService.KM_TO_MI;
+
+                const response: { kilometers?: number; miles?: number } = {};
+                if (!normalizedUnit || normalizedUnit === "km") {
+                    response.kilometers = Number(kilometers.toFixed(3));
+                }
+
+                if (!normalizedUnit || normalizedUnit === "mi") {
+                    response.miles = Number(miles.toFixed(3));
+                }
+
+                loggerService.info({ path: "/address/distance", message: "Distance transaction completed." }).flush();
+                resolve({ distance: response });
+            } catch (err) {
+                loggerService.error({ path: "/address/distance", message: `${(err as Error).message}` }).flush();
+                reject(err);
+            }
+        });
     }
 
-    // private async getDistance(lat1: string, lon1: string, lat2: string, lon2: string) {
-    //     // Defining this function inside of this private method means it's
-    //     // not accessible outside of it, which is perfect for encapsulation.
-    //     const toRadians = (degrees: string) => {
-    //         return degrees * (Math.PI / 180);
-    //     }
+    private parseCoordinate(value: unknown, field: string): number {
+        if (value === null || value === undefined || value === "") {
+            loggerService.warning({ path: "/address/distance", message: `Missing coordinate parameter: ${field}.` }).flush();
+            throw new Error(`Invalid request. ${field} is required.`);
+        }
 
-    //     // Radius of the Earth in KM
-    //     const R = 6371;
+        const parsed = Number(value);
+        if (!Number.isFinite(parsed)) {
+            loggerService.warning({ path: "/address/distance", message: `Invalid coordinate provided for ${field}: ${value}` }).flush();
+            throw new Error(`Invalid request. ${field} must be a numeric value.`);
+        }
 
-    //     // Convert Lat and Longs to Radians
-    //     const dLat = toRadians(lat2 - lat1);
-    //     const dLon = toRadians(lon2 - lon1);
+        return parsed;
+    }
 
-    //     // Haversine Formula to calculate the distance between two locations
-    //     // on a sphere.
-    //     const a =
-    //         Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    //         Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) *
-    //         Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    private normalizeUnit(value: unknown): "km" | "mi" | undefined {
+        if (value === null || value === undefined || value === "") {
+            return undefined;
+        }
 
-    //     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        if (typeof value !== "string") {
+            loggerService.warning({ path: "/address/distance", message: "Distance unit was provided in an invalid format." }).flush();
+            throw new Error("Invalid request. unit must be either 'km' or 'mi'.");
+        }
 
-    //     // convert and return distance in KM
-    //     return R * c;
-    // }
+        const normalized = value.trim().toLowerCase();
+        if (normalized !== "km" && normalized !== "mi") {
+            loggerService.warning({ path: "/address/distance", message: `Unsupported distance unit provided: ${value}` }).flush();
+            throw new Error("Invalid request. unit must be either 'km' or 'mi'.");
+        }
+
+        return normalized as "km" | "mi";
+    }
+
+    private toRadians(degrees: number): number {
+        return degrees * (Math.PI / 180);
+    }
+
+    private getDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+        const dLat = this.toRadians(lat2 - lat1);
+        const dLon = this.toRadians(lon2 - lon1);
+        const a =
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(this.toRadians(lat1)) * Math.cos(this.toRadians(lat2)) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return AddressService.EARTH_RADIUS_KM * c;
+    }
+
+
+
+    public async format(addressRequest?: any): Promise<any> {
+        return new Promise<any>(async (resolve, reject) => {
+            loggerService.info({ path: '/address/format', 
+                                 message: 'format transaction occurred'})
+                                 .flush();
+            const body = addressRequest?.body ?? {};
+            const FIELDS = ['number', 'street', 'city', 'state', 'zipcode'];
+            if (!addressRequest?.body) {
+                loggerService.warning({ path: '/address/format',
+                                        message: 'Request body is missing or null' })
+                                        .flush();
+                return reject({ message: `Request body must include at least one of: ${FIELDS.join(', ')}.` });
+            }
+ 
+            if (!(FIELDS.some( f => body[f] !== undefined && 
+                                    body[f] !== null && 
+                                    body[f] !== ''))){ 
+                loggerService.warning({ path: '/address/format', 
+                                        message: `Bad request: missing required fields.}` })
+                                        .flush();
+                return reject({ message: `Request body must include at least one of: ${FIELDS.join(', ')}.` });
+            }
+ 
+            this.request(addressRequest)
+                .then((response) => {
+                    if (!Array.isArray(response)) {
+                        loggerService.warning({ 
+                            path: '/address/format', 
+                            message: 'Upstream returned a nonarray response. Empty fallback' })
+                            .flush();
+                    }
+                    const results = Array.isArray(response) ? response : [];
+                    // formatted address looks like:
+                    // <num> <st1> <st2>, <city>, <state> <zip>-<plus4>, <country>
+                    // Ex: 1 MIRACLE MILE DR # 590, ROCHESTER, NY 14623-5851, US
+                    const formatted = results.map(a => ({
+                        latitude: a.latitude,
+                        longitude: a.longitude,
+                        formatted_address: [
+                            [a.number, a.street, a.street2].filter(Boolean).join(' '),
+                            a.city,
+                            [a.state, [a.zipcode, a.plus4].filter(Boolean).join('-')].filter(Boolean).join(' '),
+                            a.country
+                        ].filter(Boolean).join(', ')
+                    }));
+                    resolve(formatted);
+                })
+                .catch((err) => {
+                    loggerService.error({ path: '/address/format', message: `${(err as Error).message}` }).flush();
+                    reject(err);
+                });
+        });
+    }
+
+    //renny: Add a new endpoint that accepts in a request with a zip code and responds with the city name that the zip code is associated with.
+    public async zipcode(addressRequest?: any): Promise<any> {
+        return new Promise<any>(async (resolve, reject) => {
+            // log someone calling endpoint
+            loggerService.info({ path: '/address/zipcode', message: 'Looking up city for zipcode:' }).flush();
+
+            // rejects if no body sent
+            if (!addressRequest?.body) {
+                loggerService.warning({ path: '/address/zipcode', message: 'No body included in request' }).flush();
+                return reject({ message: 'Request body is required.' });
+            }
+            const zipcode = addressRequest.body.zipcode;
+
+            // require field
+            if (!zipcode) {
+                loggerService.warning({ path: '/address/zipcode', message: 'zipcode is missing or empty' }).flush();
+                return reject({ message: 'zipcode required!' });
+            }
+
+            fetch(AddressService.fetchUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ zipcode: zipcode })
+            })
+            .then(async (response) => {
+                const data = await response.json();
+
+                // if the array empty=nom atch
+                if (!Array.isArray(data) || data.length === 0) {
+                    loggerService.warning({ path: '/address/zipcode', message: 'no results for zipcode' }).flush();
+                    return reject({ message: 'no city found matching zipcode.' });
+                }
+                // get city and make sure exist
+                const city = data[0].city;
+                if (!city) {
+                    loggerService.warning({ path: '/address/zipcode', message: 'result has no city field' }).flush();
+                    return reject({ message: 'no city found matching zipcode.' });
+                }
+                resolve({ city: city });
+            })
+            .catch((err) => {
+                loggerService.error({ path: '/address/zipcode', message: (err as Error).message }).flush();
+                reject(err);
+            });
+
+        });
+    }
+ 
 }
+
+
 
 // Connor Bashaw: named export is `AddressService`; default export is the singleton for endpoints/services.
 const addressService = new AddressService();

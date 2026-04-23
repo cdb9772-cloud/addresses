@@ -1,7 +1,4 @@
 import { NextFunction, Request, Response } from 'express';
-import responseWrapper from '../services/response.service';
-import { RESPONSE_STATUS_FAIL, RESPONSE_EVENT_READ } from '../constants/generic.constants';
-import { INVALID_REQUEST } from '../constants/errors.constants';
 import createHttpError from 'http-errors';
 
 class BaseEndpoint {
@@ -12,19 +9,19 @@ class BaseEndpoint {
 
     public constructor() { }
 
-    public get(req: Request, res: Response, next: NextFunction) {
+    public get(_req: Request, _res: Response, _next: NextFunction) {
         throw new createHttpError.BadRequest();
     }
 
-    public post(req: Request, res: Response, next: NextFunction) {
+    public post(_req: Request, _res: Response, _next: NextFunction) {
         throw new createHttpError.BadRequest();
     }
 
-    public put(req: Request, res: Response, next: NextFunction) {
+    public put(_req: Request, _res: Response, _next: NextFunction) {
         throw new createHttpError.BadRequest();
     }
 
-    public delete(req: Request, res: Response, next: NextFunction) {
+    public delete(_req: Request, _res: Response, _next: NextFunction) {
         throw new createHttpError.BadRequest();
     }
 

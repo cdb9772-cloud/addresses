@@ -16,11 +16,11 @@ Features:
 - Automated deployment + health check
 
 Tech Used:
-Node.js 
-npm
-Docker
-nginx
-GitHub Actions
+- Node.js 
+- npm
+- Docker
+- nginx
+- GitHub Actions
 
 
 API URL:
@@ -31,16 +31,13 @@ Requirements: Requests must include at least one
 - state
 - zipcode
 
-Getting Started (Local Development)
 
 Installing Dependencies:
 - npm install
 
-Run the App
+Running the App:
 - npm run dev
-
-App runs at:
-http://localhost:5173
+- App runs at: http://localhost:5173
 
 Running Tests: 
 - npm test
@@ -60,24 +57,21 @@ Build and Run
 Access the App:
 http://localhost:8080
 
-Docker is Set Up
+Docker Set Up: this project uses a multi-stage build
 
-This project uses a multi-stage build:
+Builder Stage:
+- Uses node:18-alpine
+- Installs dependencies
+- Runs the build
+- Outputs files to /dist
 
-Builder Stage
-Uses node:18-alpine
-Installs dependencies
-Runs the build
-Outputs files to /dist
-Production Stage
-Uses nginx:alpine
-Copies /dist into nginx
-Serves the app
+Production Stage:
+- Uses nginx:alpine
+- Copies /dist into nginx
+- Serves the app
 
-CI/CD Pipeline
+CI/CD Pipeline:
 - The pipeline is set up to run automatically on pushes and pull requests.
-
-What it does:
 - Runs linting
     - If this fails, everything stops
 - Runs unit tests

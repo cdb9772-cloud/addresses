@@ -15,6 +15,7 @@
  */
 import loggerService from "./logger.service";
 import { Request } from "express";
+type AddressRequest = Partial<Pick<Request, 'body'>>;
 
 export class AddressService {
     // Connor Bashaw: HTTPS URL per assignment; old http + :3000 was incorrect for production API.
@@ -35,8 +36,8 @@ export class AddressService {
     private static readonly KM_TO_MI = 0.621371;
 
     
-    public async count(addressRequest?: Request): Promise<unknown> {
-        return new Promise<unknown>(async (resolve, reject) => {
+    public async count(addressRequest?: AddressRequest): Promise<{ count: number }> {
+        return new Promise<{ count: number }>(async (resolve, reject) => {
             loggerService.info({ path: '/address/count',
                                  message: 'Count transaction occurred' })
                                  .flush();
@@ -60,7 +61,7 @@ export class AddressService {
         });
     }
 
-    public async request(addressRequest?: Request): Promise<unknown> {
+    public async request(addressRequest?: AddressRequest): Promise<unknown> {
         return new Promise<unknown>(async (resolve, reject) => {
             loggerService.info({ path: '/address/request',
                                  message: 'Request transaction occurred' })
@@ -87,8 +88,8 @@ export class AddressService {
         });
     }
 
-    public async distance(addressRequest?: Request): Promise<unknown> {
-        return new Promise<unknown>(async (resolve, reject) => {
+    public async distance(addressRequest?: AddressRequest): Promise<{ distance: { kilometers?: number; miles?: number } }> {
+        return new Promise<{ distance: { kilometers?: number; miles?: number } }>(async (resolve, reject) => {
             try {
                 loggerService.info({ path: "/address/distance", message: "Distance transaction requested." }).flush();
 
@@ -178,8 +179,8 @@ export class AddressService {
 
 
 
-    public async format(addressRequest?: Request): Promise<unknown> {
-        return new Promise<unknown>(async (resolve, reject) => {
+    public async format(addressRequest?: AddressRequest): Promise<{ latitude: number; longitude: number; formatted_address: string }[]> {
+        return new Promise<{ latitude: number; longitude: number; formatted_address: string }[]>(async (resolve, reject) => {
             loggerService.info({ path: '/address/format', 
                                  message: 'format transaction occurred'})
                                  .flush();
@@ -233,8 +234,8 @@ export class AddressService {
     }
 
     //renny: Add a new endpoint that accepts in a request with a zip code and responds with the city name that the zip code is associated with.
-    public async zipcode(addressRequest?: Request): Promise<unknown> {
-        return new Promise<unknown>(async (resolve, reject) => {
+    public async zipcode(addressRequest?: AddressRequest): Promise<{ city: string }> {
+        return new Promise<{ city: string }>(async (resolve, reject) => {
             // log someone calling endpoint
             loggerService.info({ path: '/address/zipcode', message: 'Looking up city for zipcode:' }).flush();
 

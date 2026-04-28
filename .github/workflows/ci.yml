@@ -128,11 +128,10 @@ jobs:
  
       - name: Restart app
         run: |
-          pkill -SIGTERM -f "node.*server.js" || true
-          sleep 16
-          nohup node ~/addresses/dist/src/server.js >> ~/addresses/app.log 2>&1 &
-          disown $!
-          echo "Started PID: $!"
+          pm2 stop addresses || true
+          pm2 delete addresses || true
+          pm2 start ~/addresses/dist/src/server.js --name addresses
+          pm2 save
   health-check:
     name: Health Check
     runs-on: self-hosted

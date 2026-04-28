@@ -42,7 +42,7 @@ Returns the health status of the service.
 **Response**
  
 ```json
-{ "status": "ok" }
+OK
 ```
  
 ---
@@ -268,4 +268,37 @@ Implemented to align with assignment requirements:
   - when user-provided input is invalid but handled
 - `error` logs:
   - when an exception is thrown and caught during execution
+
+# Deployment
+
+Deployment is to RLES VM, as it can access the upstream API. To do so, we have a job in our CICD that will invoke a self-hosted runner on the VM to run the deployment.
+
+## Getting Started
+
+Ensure the VM has Node.js, pm2, and Github Actions runner installed.
+
+Then run
+```bash
+git clone https://<YOUR_ACCESS_TOKEN>@github.com/cdb9772-cloud/addresses ~/addresses
+cd ~/addresses
+echo "ENV=prod" >> .env
+echo "SERVER_PORT=4900" >> .env
+npm ci --omit=dev
+npm run build
+pm2 start dist/src/server.js --name addresses
+pm2 save
+```
+
+This will keep the process running on the VM through Process Manager (pm2) and will save it through reboots.
+
+## Continuous Deployment
+
+Assuming the Github Action Runner is configured to track jobs from this repository, you can just run
+
+```bash
+cd ~/actions-runner
+nohup ./run.sh >> ~/actions-runner/runner.log 2>&1 &
+```
+
+And it will start listening for jobs. Whenever a deploy job is received, it will rebuild the artifact and redeploy it, reloading it through pm2.
 

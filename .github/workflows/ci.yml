@@ -131,6 +131,7 @@ jobs:
           pkill -SIGTERM -f "node.*server.js" || true
           sleep 16
           nohup node ~/addresses/dist/src/server.js >> ~/addresses/app.log 2>&1 &
+          disown $!
           echo "Started PID: $!"
   health-check:
     name: Health Check
@@ -144,7 +145,7 @@ jobs:
             STATUS=$(curl --silent --output /dev/null --write-out "%{http_code}" \
               --max-time 5 "http://localhost:4900/health" || echo "000")
  
-            echo "Attempt $i — HTTP $STATUS"
+            echo "Attempt $i - HTTP $STATUS"
  
             if [ "$STATUS" = "200" ]; then
               echo "Health check passed!"

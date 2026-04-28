@@ -1,38 +1,271 @@
-ISTE-422 Project
+# ISTE-422 - Address API
 
-Overview:
-This project is a typescript and Express application that pulls address data from an external API like city, state, or zipcode.
+## Set Up Your Local Dev Environment and Run
 
-Features:
-- Address lookup using API
-- Result count endpoint
-- Request/Erorr logging
-- Health check endpoint
-- CORS enabled
-- Jest Integration
+1. Install dependencies:
+   - `npm install`
+2. Run in development (important: force dev env for route loading):
+   - `ENV=dev npm run dev`
+3. Run tests:
+   - `npm test`
 
-Tech Used:
-- Node.js 
-- Typescript
-- Express
-- Jest
-- GitHub Actions
+## Important Runtime Note (Why You Might See 400 Bad Request)
 
+This project resolves endpoint files differently based on `ENV`:
+- `ENV=dev` -> uses TypeScript files in `src/endpoints/*.ts`
+- anything else -> uses JavaScript files in `dist/src/endpoints/*.js`
 
-API URL:
-https://ischool.gccis.rit.edu/addresses/
+If you run `npm run dev` without setting `ENV=dev`, requests may return generic:
+- `{"error":{"status":400,"message":"Bad Request"}}`
 
+Use this for local testing:
+- `ENV=dev npm run dev`
 
+## Address Endpoints
 
-Installing Dependencies:
-- npm install
+- `POST /address/request`
+- `POST /address/count`
+- `POST /address/distance`
+- `POST /address/zipcode`
+- `POST /address/format`
 
-Add .env file: 
-- This should be added to the project's main directory
-- Includes ENV, SERVER_PORT, and NODE_ENV
+# API Usage
+ 
+All endpoints accept and return JSON. Set `Content-Type: application/json` on every request.
+ 
+---
+ 
+## `GET /health`
+ 
+Returns the health status of the service.
+ 
+**Response**
+ 
+```json
+{ "status": "ok" }
+```
+ 
+---
+ 
+## `POST /address/request`
+ 
+Looks up addresses matching the provided fields against the upstream address API.
+ 
+**Body** — at least one field required:
+ 
+```json
+{
+  "number": "<street number>",
+  "street": "<street name>",
+  "city": "<city>",
+  "state": "<state>",
+  "zipcode": "<zipcode>"
+}
+```
+ 
+**Response** — array of matching raw address records from the upstream API.
+ 
+```json
+{
+  "status": "OK",
+  "event": "READ",
+  "body": [
+    {
+      "number": "<street number>",
+      "street": "<street name>",
+      "city": "<city>",
+      "state": "<state>",
+      "zipcode": "<zipcode>",
+      "plus4": "<plus4>",
+      "country": "<country>",
+      "latitude": "<latitude>",
+      "longitude": "<longitude>"
+    }
+  ]
+}
+```
+ 
+---
+ 
+## `POST /address/format`
+ 
+Same lookup as `/request` but returns a cleaned, human-readable formatted address with coordinates. At least one of the following fields is required: `number`, `street`, `city`, `state`, `zipcode`.
+ 
+**Body**
+ 
+```json
+{
+  "number": "<street number>",
+  "street": "<street name>",
+  "city": "<city>",
+  "state": "<state>",
+  "zipcode": "<zipcode>"
+}
+```
+ 
+**Response**
+ 
+```json
+{
+  "status": "OK",
+  "event": "READ",
+  "body": [
+    {
+      "latitude": "<latitude>",
+      "longitude": "<longitude>",
+      "formatted_address": "<street number> <street name>, <city>, <state> <zipcode>-<plus4>, <country>"
+    }
+  ]
+}
+```
+ 
+---
+ 
+## `POST /address/count`
+ 
+Returns the number of address records matching the provided fields. Accepts the same fields as `/request`.
+ 
+**Body** — at least one field required:
+ 
+```json
+{
+  "number": "<street number>",
+  "street": "<street name>",
+  "city": "<city>",
+  "state": "<state>",
+  "zipcode": "<zipcode>"
+}
+```
+ 
+**Response**
+ 
+```json
+{
+  "status": "OK",
+  "event": "READ",
+  "body": {
+    "count": "<number of matching records>"
+  }
+}
+```
+ 
+---
+ 
+## `POST /address/distance`
+ 
+Calculates the distance between two coordinates using the Haversine formula.
+ 
+**Body**
+ 
+```json
+{
+  "lat1": "<latitude>",
+  "lon1": "<longitude>",
+  "lat2": "<latitude>",
+  "lon2": "<longitude>",
+  "unit": "<km|mi>"
+}
+```
+ 
+Required fields:
+- `lat1`, `lon1`, `lat2`, `lon2` (must be numeric)
+Optional field:
+- `unit` (must be `"km"` or `"mi"` if provided)
+### Output Rules
+ 
+If `unit` is omitted — returns both units:
+```json
+{
+  "status": "OK",
+  "event": "READ",
+  "body": { "distance": { "kilometers": "<number>", "miles": "<number>" } }
+}
+```
+ 
+If `unit` is `"km"` — returns kilometers only:
+```json
+{
+  "status": "OK",
+  "event": "READ",
+  "body": { "distance": { "kilometers": "<number>" } }
+}
+```
+ 
+If `unit` is `"mi"` — returns miles only:
+```json
+{
+  "status": "OK",
+  "event": "READ",
+  "body": { "distance": { "miles": "<number>" } }
+}
+```
+ 
+---
+ 
+## `POST /address/zipcode`
+ 
+Returns the city name associated with a given ZIP code.
+ 
+**Body**
+ 
+```json
+{ "zipcode": "<zipcode>" }
+```
+ 
+**Response**
+ 
+```json
+{
+  "status": "OK",
+  "event": "READ",
+  "body": {
+    "city": "<city>"
+  }
+}
+```
 
-Running the App:
-- npm run
+## Algorithm Used
 
-Testing: 
-- npm test
+Distance is calculated with the Haversine formula:
+- Converts degree inputs to radians
+- Uses Earth radius in kilometers (`6371`)
+- Converts kilometers to miles using `0.621371`
+- Rounds returned values to 3 decimal places
+
+## Null Checks and Validation
+
+The service validates:
+- Missing request object or missing request body
+- Missing coordinate fields
+- Null/empty coordinate values
+- Non-numeric coordinate values
+- Invalid `unit` values or invalid `unit` types
+
+For invalid but handled input, the service throws validation errors that are caught and returned through endpoint handlers as user-safe failed responses.
+
+## Exception Handling Strategy
+
+### In the service layer (`address.service.ts`)
+
+- Catches unexpected exceptions in `distance()`
+- Logs an error message with context
+- Rejects the promise so higher layers can format the response
+
+### In the endpoint layer (`address.endpoint.ts`)
+
+- `distance_post()` catches service rejections
+- Returns `400` with wrapped failure response
+- Prevents raw exceptions from being exposed directly to end users
+
+## Logging Behavior
+
+Implemented to align with assignment requirements:
+
+- `info` logs:
+  - when a transaction starts
+  - when distance calculation completes successfully
+- `warning` logs:
+  - when user-provided input is invalid but handled
+- `error` logs:
+  - when an exception is thrown and caught during execution
+

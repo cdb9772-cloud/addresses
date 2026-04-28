@@ -132,19 +132,15 @@ jobs:
           pm2 delete addresses || true
           pm2 start ~/addresses/dist/src/server.js --name addresses
           pm2 save
-  health-check:
-    name: Health Check
-    runs-on: self-hosted
-    needs: [deploy]
-    steps:
-      - name: Wait for app to come up
+
+      - name: Health Check
         run: |
           echo "Waiting for health check..."
           for i in $(seq 1 12); do
             STATUS=$(curl --silent --output /dev/null --write-out "%{http_code}" \
               --max-time 5 "http://localhost:4900/health" || echo "000")
  
-            echo "Attempt $i - HTTP $STATUS"
+            echo "Attempt $i — HTTP $STATUS"
  
             if [ "$STATUS" = "200" ]; then
               echo "Health check passed!"

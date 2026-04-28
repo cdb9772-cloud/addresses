@@ -7,7 +7,7 @@ const server = app.listen(SERVER_PORT || 5000, () => {
     console.info("==========================================================");
 });
 
-function gracefulShutdownHandler(signal: NodeJS.Signals) {
+function gracefulShutdownHandler(signal: NodeJS.Signals) : void {
     const GRACEFUL_SHUTDOWN_TIME = 15000;
     app.locals.HEALTH_CHECK_ENABLED = false;
 

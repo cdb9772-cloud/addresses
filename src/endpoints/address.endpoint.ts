@@ -6,7 +6,7 @@ import responseWrapper from '../services/response.service';
 import { RESPONSE_STATUS_OK, RESPONSE_STATUS_FAIL, RESPONSE_EVENT_READ } from '../constants/generic.constants';
 
 class AddressEndpoint extends baseEndpoint {
-    public post(req: Request, res: Response, next: NextFunction) {
+    public post(req: Request, res: Response, next: NextFunction) : void {
         super.executeSubRoute(addressEndpoint, req, res, next);
     }
 

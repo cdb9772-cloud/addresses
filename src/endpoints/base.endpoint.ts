@@ -25,7 +25,7 @@ class BaseEndpoint {
         throw new createHttpError.BadRequest();
     }
 
-    public executeSubRoute(endPointMethod: object, req: Request, res: Response, next: NextFunction) {
+    public executeSubRoute(endPointMethod: object, req: Request, res: Response, next: NextFunction) : void{
         let subRoute = req.originalUrl.split('/')[2];
         subRoute = `${subRoute}_${req.method.toLowerCase()}`
 

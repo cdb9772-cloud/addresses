@@ -10,7 +10,7 @@ class AddressEndpoint extends baseEndpoint {
         super.executeSubRoute(addressEndpoint, req, res, next);
     }
 
-    private count_post(req: Request, res: Response, _next: NextFunction) {
+    private count_post(req: Request, res: Response, _next: NextFunction) : void {
         addressService.count(req)
             .then((response) => {
                 res.status(200).send(responseWrapper(RESPONSE_STATUS_OK, RESPONSE_EVENT_READ, response));
@@ -19,7 +19,7 @@ class AddressEndpoint extends baseEndpoint {
             });
     }
 
-    private request_post(req: Request, res: Response, _next: NextFunction) {
+    private request_post(req: Request, res: Response, _next: NextFunction) : void {
         addressService.request(req)
             .then((response) => {
                 res.status(200).send(responseWrapper(RESPONSE_STATUS_OK, RESPONSE_EVENT_READ, response));
@@ -29,7 +29,7 @@ class AddressEndpoint extends baseEndpoint {
     }
 
 
-    private format_post(req: Request, res: Response, _next: NextFunction) {
+    private format_post(req: Request, res: Response, _next: NextFunction) : void {
         addressService.format(req)
             .then((response) => {
                 res.status(200).send(responseWrapper(RESPONSE_STATUS_OK, RESPONSE_EVENT_READ, response));
@@ -39,7 +39,7 @@ class AddressEndpoint extends baseEndpoint {
     }
 
     
-    private distance_post(req: Request, res: Response, _next: NextFunction) {
+    private distance_post(req: Request, res: Response, _next: NextFunction) : void {
         addressService.distance(req)
             .then((response) => {
                 res.status(200).send(responseWrapper(RESPONSE_STATUS_OK, RESPONSE_EVENT_READ, response));
@@ -49,7 +49,7 @@ class AddressEndpoint extends baseEndpoint {
     }
 
     //renny: handles POST /address/zipcode
-    private zipcode_post(req: Request, res: Response, _next: NextFunction) {
+    private zipcode_post(req: Request, res: Response, _next: NextFunction) : void {
         addressService.zipcode(req)
             .then((response) => {
                 res.status(200).send(responseWrapper(RESPONSE_STATUS_OK, RESPONSE_EVENT_READ, response));

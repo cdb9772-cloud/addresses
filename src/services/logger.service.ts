@@ -19,7 +19,7 @@ class Logger {
      * @param logType A interface that accepts the request path and the log message
      * @param fieldSet An empty object that extending the logging frame with custom structured key value pairs.
      */
-    public fatal(logType: ILoggerBody, logKeyPairs: any = {}): Logger {
+    public fatal(logType: ILoggerBody, logKeyPairs: Record<string, unknown> = {}): Logger {
         this.log(logType, 'fatal', logKeyPairs);
         return this;
     }
@@ -30,7 +30,7 @@ class Logger {
      * @param logType A interface that accepts the request path and the log message
      * @param logKeyPairs An empty object that extending the logging frame with custom structured key value pairs.
      */
-    public error(logType: ILoggerBody, logKeyPairs: any = {}): Logger {
+    public error(logType: ILoggerBody, logKeyPairs: Record<string, unknown> = {}): Logger {
         this.log(logType, 'error', logKeyPairs);
         return this;
     }
@@ -41,7 +41,7 @@ class Logger {
      * @param logType A interface that accepts the request path and the log message
      * @param logKeyPairs An empty object that extending the logging frame with custom structured key value pairs.
      */
-    public warning(logType: ILoggerBody, logKeyPairs: any = {}): Logger {
+    public warning(logType: ILoggerBody, logKeyPairs: Record<string, unknown> = {}): Logger {
         this.log(logType, 'warning', logKeyPairs);
         return this;
     }
@@ -52,7 +52,7 @@ class Logger {
      * @param logType A interface that accepts the request path and the log message
      * @param logKeyPairs An empty object that extending the logging frame with custom structured key value pairs.
      */
-    public info(logType: ILoggerBody, logKeyPairs: any = {}): Logger {
+    public info(logType: ILoggerBody, logKeyPairs: Record<string, unknown> = {}): Logger {
         this.log(logType, 'info', logKeyPairs);
         return this;
     }
@@ -63,7 +63,7 @@ class Logger {
      * @param logType A interface that accepts the request path and the log message
      * @param logKeyPairs An empty object that extending the logging frame with custom structured key value pairs.
      */
-    public debug(logType: ILoggerBody, logKeyPairs: any = {}): Logger {
+    public debug(logType: ILoggerBody, logKeyPairs: Record<string, unknown> = {}): Logger {
         this.log(logType, 'debug', logKeyPairs);
         return this;
     }
@@ -102,7 +102,7 @@ class Logger {
         //TODO: Implement logic to send log to a log aggregattion service like Prometheus | Grafana Loki.
     }
 
-    private log(logType: ILoggerBody, level: string, logKeyPairs?: object): void {
+    private log(logType: ILoggerBody, level: string, logKeyPairs?:  Record<string, unknown>): void {
         const keySetValues = this.parseLogKeyPairs(logKeyPairs);
         const logMessage = `[time]=${this.timeStamp()} [level]=${level} [message]='${logType.message}' ${keySetValues}[path]=${logType.path} [execution_time]=${this.executionTime()}ms`;
 
@@ -133,7 +133,7 @@ class Logger {
      * @param logKeyPair An object containing a key value pair of added log values.
      * @returns A formatted string in a structured log format.
      */
-    private parseLogKeyPairs(logKeyPairs: any = {}): string {
+    private parseLogKeyPairs(logKeyPairs: Record<string, unknown> = {}): string {
         let formattedKeyPairs = '';
         if (Object.keys(logKeyPairs).length === 0) {
             return formattedKeyPairs;

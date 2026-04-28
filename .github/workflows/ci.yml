@@ -8,6 +8,7 @@ on:
       - "features"
       - "feature-**"
       - "feature/**"
+      - "documentation/**"
   pull_request:
     branches:
       - main

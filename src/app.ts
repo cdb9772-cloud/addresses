@@ -1,7 +1,7 @@
 import express, { NextFunction, Request, Response } from 'express';
 import cors from 'cors';
 
-import createHttpError from 'http-errors';
+import createHttpError, { HttpError } from 'http-errors';
 import router from './router';
 import loggerService from './services/logger.service';
 
@@ -26,7 +26,7 @@ app.use(async (req, res: Response, next: NextFunction) => {
     next(createHttpError.BadRequest());
 });
 
-app.use(async (err: any, req: Request, res: Response, _next: NextFunction) => {
+app.use(async (err: HttpError, req: Request, res: Response, _next: NextFunction) => {
     loggerService.error({ message: err.message, path: req.path }).flush();
     const status = err.status ?? 500;
     const message = err.status === 500 ? "Internal Error" : err.message;

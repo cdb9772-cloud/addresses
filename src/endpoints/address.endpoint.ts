@@ -5,7 +5,26 @@ import responseWrapper from '../services/response.service';
 
 import { RESPONSE_STATUS_OK, RESPONSE_STATUS_FAIL, RESPONSE_EVENT_READ } from '../constants/generic.constants';
 
+/**
+ * Express endpoint handler for all `/address/*` subroutes.
+ * Delegates business logic to `addressService` and wraps all responses
+ * using `responseWrapper` for a consistent envelope shape.
+ *
+ * Successful responses return HTTP 200 with `status: "OK"`.
+ * Failed responses return HTTP 400 with `status: "FAIL"`.
+ *
+ * Subroutes handled:
+ * - `POST /address/request`  -- raw upstream address lookup
+ * - `POST /address/format`   -- formatted address lookup
+ * - `POST /address/count`    -- count of matching records
+ * - `POST /address/distance` -- Haversine distance between two coordinates
+ * - `POST /address/zipcode`  -- city name lookup by ZIP code
+ */
 class AddressEndpoint extends baseEndpoint {
+    /**
+     * Entry point for all POST requests to `/address/*`.
+     * Delegates to the appropriate private handler via `executeSubRoute`.
+     */
     public post(req: Request, res: Response, next: NextFunction) : void {
         super.executeSubRoute(addressEndpoint, req, res, next);
     }

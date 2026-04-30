@@ -12,6 +12,14 @@
  *   as JSON by the upstream server (same as a typical curl -H).
  * - The class is exported by name so unit tests can call the static helper; the default
  *   export remains the singleton instance used by the rest of the app.
+ * 
+ * 
+ * feature/zipcode-endpoint (renny):
+ * - add zipcode(), looks up a city name from a given zipcode from upstream API.
+ * - rejects early with clear message if body or zipcode field is missing, instead of:
+ *   letting fetch fire with undefined value 
+ * - upstream API returns a JSON array extract first element's city field 
+ *   empty array or missing city field both resolve to a rejected promise with a mesage instead of crashing
  */
 import loggerService from "./logger.service";
 import { Request } from "express";
@@ -233,9 +241,14 @@ export class AddressService {
         });
     }
 
-    //renny: Add a new endpoint that accepts in a request with a zip code and responds with the city name that the zip code is associated with.
+
+    /** renny: looks up city name associated with zipcode
+    *POSTS zipcode to upstream address API an returns city field from first result if successful, otherwise rejects with a message
+    * mirrors the pattern used by `request()` and `count()`
+    */
     public async zipcode(addressRequest?: AddressRequest): Promise<{ city: string }> {
         return new Promise<{ city: string }>(async (resolve, reject) => {
+
             // log someone calling endpoint
             loggerService.info({ path: '/address/zipcode', message: 'Looking up city for zipcode:' }).flush();
 
@@ -246,7 +259,8 @@ export class AddressService {
             }
             const zipcode = addressRequest.body.zipcode;
 
-            // require field
+            // zipcode must be present in the body — the upstream API returns
+            //all records if no filter is given, making the city result meaningless.
             if (!zipcode) {
                 loggerService.warning({ path: '/address/zipcode', message: 'zipcode is missing or empty' }).flush();
                 return reject({ message: 'zipcode required!' });
@@ -254,19 +268,22 @@ export class AddressService {
 
             fetch(AddressService.fetchUrl, {
                 method: "POST",
+                //explicit JSON header, same pattern as `request()`.
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ zipcode: zipcode })
             })
             .then(async (response) => {
                 const data = await response.json();
 
-                // if the array empty=nom atch
+                // upstream returns a JSON array, and empty array means no address
                 if (!Array.isArray(data) || data.length === 0) {
                     loggerService.warning({ path: '/address/zipcode', message: 'no results for zipcode' }).flush();
                     return reject({ message: 'no city found matching zipcode.' });
                 }
                 // get city and make sure exist
                 const city = data[0].city;
+
+                //guard against a malformed upstream record that has no city field
                 if (!city) {
                     loggerService.warning({ path: '/address/zipcode', message: 'result has no city field' }).flush();
                     return reject({ message: 'no city found matching zipcode.' });

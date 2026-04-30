@@ -1,5 +1,22 @@
 import { ILoggerBody, ILoggerTransports } from '../interfaces/logger.interface';
 
+
+/**
+ * Structured logger with an internal write cache.
+ *
+ * Log entries are not written immediately, as each level method (`fatal`, `error`,
+ * `warning`, `info`, `debug`) stages a formatted entry in an internal cache.
+ * Call `.flush()` to write all staged entries to stdout and reset the cache.
+ * This allows multiple log calls to be chained and emitted together:
+ *
+ * Each log entry is structured as:
+ * ```
+ * [time]=<timestamp> [level]=<level> [message]='<message>' [path]=<path> [execution_time]=<ms>ms
+ * ```
+ * Optional key-value pairs can be appended to any entry via `logKeyPairs`.
+ *
+ * A singleton instance is exported as the default export for use throughout the app.
+ */
 class Logger {
     private cache: Array<string>;
     private host: string;
@@ -102,6 +119,14 @@ class Logger {
         //TODO: Implement logic to send log to a log aggregattion service like Prometheus | Grafana Loki.
     }
 
+    /**
+     * Formats and stages a log entry in the internal cache.
+     * Called by all public level methods (`fatal`, `error`, `warning`, `info`, `debug`).
+     *
+     * @param logType - The structured log body containing `path` and `message`.
+     * @param level - The severity level string (e.g. `"info"`, `"error"`).
+     * @param logKeyPairs - Optional additional key-value pairs to append to the entry.
+     */
     private log(logType: ILoggerBody, level: string, logKeyPairs?:  Record<string, unknown>): void {
         const keySetValues = this.parseLogKeyPairs(logKeyPairs);
         const logMessage = `[time]=${this.timeStamp()} [level]=${level} [message]='${logType.message}' ${keySetValues}[path]=${logType.path} [execution_time]=${this.executionTime()}ms`;

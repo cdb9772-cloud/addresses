@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+      - "documentation/deployment"
+      - "deployment"
       - "BugFix"
       - "features"
       - "feature-**"
@@ -12,6 +14,7 @@ on:
   pull_request:
     branches:
       - main
+      - "documentation/deployment"
       - "BugFix"
       - "features"
       - "feature-**"
@@ -97,3 +100,57 @@ jobs:
       - name: Run tests
         if: github.event_name != 'pull_request'
         run: npx jest address.service.test app.test logger.service.test --config jest.config.js --passWithNoTests
+  
+  deploy:
+    name: Deploy
+    runs-on: self-hosted
+    needs: [build]
+    if: |
+      github.event_name == 'push' && (
+        github.ref == 'refs/heads/main' ||
+        github.ref == 'refs/heads/documentation/deployment' ||
+        github.ref == 'refs/heads/deployment'
+      )
+    steps:
+      - name: Pull latest code
+        run: |
+          cd ~/addresses
+          git pull origin ${{ github.ref_name }}
+ 
+      - name: Install dependencies
+        run: |
+          cd ~/addresses
+          npm ci --omit=dev
+ 
+      - name: Build
+        run: |
+          cd ~/addresses
+          npm run build
+ 
+      - name: Restart app
+        run: |
+          pm2 stop addresses || true
+          pm2 delete addresses || true
+          pm2 start ~/addresses/dist/src/server.js --name addresses
+          pm2 save
+
+      - name: Health Check
+        run: |
+          echo "Waiting for health check..."
+          for i in $(seq 1 12); do
+            STATUS=$(curl --silent --output /dev/null --write-out "%{http_code}" \
+              --max-time 5 "http://localhost:4900/health" || echo "000")
+ 
+            echo "Attempt $i — HTTP $STATUS"
+ 
+            if [ "$STATUS" = "200" ]; then
+              echo "Health check passed!"
+              exit 0
+            fi
+ 
+            sleep 5
+          done
+ 
+          echo "Health check failed after 60 seconds."
+          exit 1
+ 

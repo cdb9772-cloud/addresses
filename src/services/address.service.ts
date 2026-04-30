@@ -23,8 +23,25 @@
  */
 import loggerService from "./logger.service";
 import { Request } from "express";
+
+// Express Request Object that can just be the 'body'. Both the Request Object and the 'body' can be undefined.
 type AddressRequest = Partial<Pick<Request, 'body'>>;
 
+/**
+ * Service layer for address-related operations against the upstream address API
+ * (`https://address.nerdstacks.org/`).
+ *
+ * Exposes methods that map 1 to 1 to the `/address/*` endpoints:
+ * - `request()` -- raw upstream address lookup
+ * - `format()` -- lookup with human-readable formatted address output
+ * - `count()`   -- number of records matching a given query
+ * - `distance()` -- Haversine great-circle distance between two coordinates
+ * - `zipcode()` -- city name lookup by ZIP code
+ *
+ * All public methods accept an `AddressRequest` containing a `body` object,
+ * and return a rejected promise with a descriptive message on invalid input.
+ *
+ */
 export class AddressService {
     // Connor Bashaw: HTTPS URL per assignment; old http + :3000 was incorrect for production API.
     private static fetchUrl = 'https://address.nerdstacks.org/';
@@ -43,7 +60,19 @@ export class AddressService {
     private static readonly EARTH_RADIUS_KM = 6371;
     private static readonly KM_TO_MI = 0.621371;
 
-    
+    /**
+     * Returns the total count of address records matching the given request criteria.
+     * Mirrors the lookup performed by `request()`, but returns only the record count.
+     *
+     * @param addressRequest - Request object whose body accepts at least one of:
+     *   `number`, `street`, `city`, `state`, `zipcode`.
+     * @returns A promise resolving to:
+     *   ```json
+     *   { "count": <count> }
+     *   ```
+     * @throws If the request body is missing or if the upstream request fails.
+     *
+     */
     public async count(addressRequest?: AddressRequest): Promise<{ count: number }> {
         return new Promise<{ count: number }>(async (resolve, reject) => {
             loggerService.info({ path: '/address/count',
@@ -69,6 +98,25 @@ export class AddressService {
         });
     }
 
+    /**
+     * Sends a POST request to the upstream address API and returns the raw parsed response.
+     * Used internally by `count()`, `format()`, and other methods that need upstream data.
+     *
+     * @param addressRequest - Request object whose body accepts at least one of:
+     *   `number`, `street`, `city`, `state`, `zipcode`.
+     * @returns A promise resolving to the raw upstream response, being an array of address records:
+     *   ```json
+     *   [
+     *     {
+     *       "number": "<number>", "street": "<street>", "city": "<city>",
+     *       "state": "<state>", "zipcode": "<zipcode>", "plus4": "<plus4>",
+     *       "country": "<country>", "latitude": "<latitude>", "longitude": "<longitude>"
+     *     }
+     *   ]
+     *   ```
+     * @throws If the request body is missing or if the fetch call fails.
+     *
+     */
     public async request(addressRequest?: AddressRequest): Promise<unknown> {
         return new Promise<unknown>(async (resolve, reject) => {
             loggerService.info({ path: '/address/request',
@@ -96,6 +144,22 @@ export class AddressService {
         });
     }
 
+
+    /**
+     * Calculates the great-circle distance between two geographic coordinates
+     * using the Haversine formula. Results are rounded to 3 decimal places.
+     *
+     * @param addressRequest - Request object whose body must include:
+     *   - `lat1`, `lon1` -- start point coordinates (must be numeric)
+     *   - `lat2`, `lon2`-- end point coordinates (must be numeric)
+     *   - `unit` *(optional)* -- `"km"` or `"mi"`. If omitted, both are returned.
+     * @returns A promise resolving to a distance object. Shape depends on `unit`:
+     *   - No unit: `{ "distance": { "kilometers": <kilometers>, "miles": <miles> } }`
+     *   - `"km"`:  `{ "distance": { "kilometers": <kilometers> } }`
+     *   - `"mi"`:  `{ "distance": { "miles": <miles> } }`
+     * @throws If any coordinate is missing or non-numeric, or if `unit` is an unrecognized string.
+     *
+     */
     public async distance(addressRequest?: AddressRequest): Promise<{ distance: { kilometers?: number; miles?: number } }> {
         return new Promise<{ distance: { kilometers?: number; miles?: number } }>(async (resolve, reject) => {
             try {
@@ -118,10 +182,11 @@ export class AddressService {
                 const miles = kilometers * AddressService.KM_TO_MI;
 
                 const response: { kilometers?: number; miles?: number } = {};
+                // unit is km or there isn't any unit provided
                 if (!normalizedUnit || normalizedUnit === "km") {
                     response.kilometers = Number(kilometers.toFixed(3));
                 }
-
+                // unit is mi or there isn't any unit provided
                 if (!normalizedUnit || normalizedUnit === "mi") {
                     response.miles = Number(miles.toFixed(3));
                 }
@@ -186,7 +251,30 @@ export class AddressService {
     }
 
 
-
+    /**
+     * Looks up addresses from the upstream API and returns them in a standardized,
+     * human-readable format with coordinates. Internally delegates to `request()`.
+     *
+     * At least one of the following body fields is required:
+     * `number`, `street`, `city`, `state`, `zipcode`.
+     *
+     * @param addressRequest - Request object whose body accepts at least one of:
+     *   `number`, `street`, `city`, `state`, `zipcode`.
+     * @returns A promise resolving to an array of formatted address objects:
+     *   ```json
+     *   [
+     *     {
+     *       "latitude": "<latitude>",
+     *       "longitude": "<longitude>",
+     *       "formatted_address": "<number> <street> <street2>, <city>, <state> <zipcode>-<plus4>, <country>"
+     *     }
+     *   ]
+     *   ```
+     *   Returns an empty array if the upstream response is not a valid array.
+     * @throws If the request body is missing or contains none of the required fields.
+     *
+     * @see POST /address/format
+     */
     public async format(addressRequest?: AddressRequest): Promise<{ latitude: number; longitude: number; formatted_address: string }[]> {
         return new Promise<{ latitude: number; longitude: number; formatted_address: string }[]>(async (resolve, reject) => {
             loggerService.info({ path: '/address/format', 
@@ -200,7 +288,8 @@ export class AddressService {
                                         .flush();
                 return reject({ message: `Request body must include at least one of: ${FIELDS.join(', ')}.` });
             }
- 
+            
+            // Has NONE of the fields that the endpoint needs at least one of
             if (!(FIELDS.some( f => body[f] !== undefined && 
                                     body[f] !== null && 
                                     body[f] !== ''))){ 
@@ -212,16 +301,17 @@ export class AddressService {
  
             this.request(addressRequest)
                 .then((response) => {
+                    // expect an array response from upstream, if not, handle gracefully and will default to empty array for safety.
                     if (!Array.isArray(response)) {
                         loggerService.warning({ 
                             path: '/address/format', 
                             message: 'Upstream returned a nonarray response. Empty fallback' })
                             .flush();
                     }
+                
                     const results = Array.isArray(response) ? response : [];
-                    // formatted address looks like:
-                    // <num> <st1> <st2>, <city>, <state> <zip>-<plus4>, <country>
-                    // Ex: 1 MIRACLE MILE DR # 590, ROCHESTER, NY 14623-5851, US
+
+                    // filters out optional values if they are missing, then builds the formatted address
                     const formatted = results.map(a => ({
                         latitude: a.latitude,
                         longitude: a.longitude,
@@ -242,10 +332,22 @@ export class AddressService {
     }
 
 
-    /** renny: looks up city name associated with zipcode
-    *POSTS zipcode to upstream address API an returns city field from first result if successful, otherwise rejects with a message
-    * mirrors the pattern used by `request()` and `count()`
-    */
+    /**
+     * Returns the city name associated with a given ZIP code.
+     * POSTs the zipcode to the upstream address API and resolves with the `city`
+     * field from the first matching record.
+     *
+     * A `zipcode` field is required in the body.
+     *
+     * @param addressRequest - Request object whose body must contain `zipcode`.
+     * @returns A promise resolving to:
+     *   ```json
+     *   { "city": "<city>" }
+     *   ```
+     * @throws If the request body or `zipcode` field is missing, if no records match
+     *   the given ZIP code, or if the first upstream record contains no `city` field.
+     *
+     */
     public async zipcode(addressRequest?: AddressRequest): Promise<{ city: string }> {
         return new Promise<{ city: string }>(async (resolve, reject) => {
 

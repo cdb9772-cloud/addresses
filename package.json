@@ -11,7 +11,8 @@
         "build": "tsc --project ./",
         "lint": "eslint . && tsc --noEmit",
         "dev": "nodemon ./src/server.ts",
-        "test": "jest"
+        "test": "jest",
+        "profile:dynamic": "bash ./scripts/profile-dynamic.sh"
     },
     "repository": {
       "type": "git",

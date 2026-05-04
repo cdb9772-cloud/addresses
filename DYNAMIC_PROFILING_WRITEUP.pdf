@@ -1,0 +1,241 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+2 0 obj
+<< /Length 1826 >>
+stream
+BT
+/F1 11 Tf
+1 0 0 1 54 738 Tm
+14 TL
+(DYNAMIC PROFILING ANALYSIS WRITE-UP) Tj
+T*
+(===================================) Tj
+T*
+() Tj
+T*
+(Objective) Tj
+T*
+(---------) Tj
+T*
+(The goal was to run dynamic profiling on the Address API and measure both CPU and memory) Tj
+T*
+(utilization.) Tj
+T*
+(We also needed to identify which functions/steps consumed the most resources and explain why.) Tj
+T*
+() Tj
+T*
+() Tj
+T*
+(What We Ran) Tj
+T*
+(----------) Tj
+T*
+(1\) Build:) Tj
+T*
+(   npm run build) Tj
+T*
+() Tj
+T*
+(2\) Live profiling run \(server\):) Tj
+T*
+(   ENV=dev SERVER_PORT=5001 node --cpu-prof --cpu-prof-name=cpu.cpuprofile --heap-prof) Tj
+T*
+(--heap-prof-name=heap.heapprofile dist/src/server.js) Tj
+T*
+() Tj
+T*
+(3\) Dynamic endpoint workload:) Tj
+T*
+(   Repeated POST requests to:) Tj
+T*
+(   - /address/distance) Tj
+T*
+(   - /address/request) Tj
+T*
+(   - /address/format) Tj
+T*
+(   - /address/count) Tj
+T*
+(   - /address/zipcode) Tj
+T*
+() Tj
+T*
+(4\) Endpoint timing benchmark:) Tj
+T*
+(   Used curl time_total measurements across 10 runs per endpoint.) Tj
+T*
+() Tj
+T*
+(5\) Focused compute benchmark:) Tj
+T*
+(   Ran a high-iteration loop calling getDistance\(...\) to isolate pure math CPU cost.) Tj
+T*
+() Tj
+T*
+(6\) Memory footprint check:) Tj
+T*
+(   Used /usr/bin/time -l to capture max resident set size and peak memory footprint.) Tj
+T*
+() Tj
+T*
+() Tj
+T*
+(Measured Results) Tj
+T*
+(----------------) Tj
+T*
+(Endpoint latency \(avg of 10 calls each\):) Tj
+T*
+(- distance: avg 1.75 ms, max 6.55 ms) Tj
+T*
+(- request:  avg 0.84 ms, max 1.04 ms) Tj
+T*
+(- format:   avg 0.78 ms, max 1.09 ms) Tj
+T*
+(- count:    avg 0.86 ms, max 0.97 ms) Tj
+T*
+(- zipcode:  avg 0.77 ms, max 0.86 ms) Tj
+T*
+() Tj
+T*
+(CPU hotspot findings:) Tj
+T*
+(- In the focused CPU profile, getDistance\(...\) was a major hotspot \(~35.42% sampled CPU share\).) Tj
+ET
+endstream
+endobj
+3 0 obj
+<< /Length 2417 >>
+stream
+BT
+/F1 11 Tf
+1 0 0 1 54 738 Tm
+14 TL
+(- Garbage collector activity was present \(~9.26%\).) Tj
+T*
+(- Remaining samples included caller/loop overhead and runtime internals.) Tj
+T*
+() Tj
+T*
+(Memory utilization findings:) Tj
+T*
+(- Focused compute run max RSS: 45,842,432 bytes \(~43.7 MB\).) Tj
+T*
+(- Peak memory footprint reported: 13,849,472 bytes \(~13.2 MB\).) Tj
+T*
+(- During endpoint traffic sampling, memory remained stable \(no leak pattern observed\).) Tj
+T*
+() Tj
+T*
+() Tj
+T*
+(Why These Results Happened) Tj
+T*
+(-------------------------------------------) Tj
+T*
+(The distance endpoint took the most time because it does more CPU work than the other routes:) Tj
+T*
+(- Input parsing and validation) Tj
+T*
+(- Degree-to-radian conversions) Tj
+T*
+(- Repeated trigonometric calculations \(sin, cos, atan2, sqrt\) in Haversine math) Tj
+T*
+() Tj
+T*
+(In contrast, other endpoints are mostly I/O-style request handling, formatting, or counting, so) Tj
+T*
+(they return faster.) Tj
+T*
+(Memory stayed relatively stable because request payloads are small and handlers complete) Tj
+T*
+(quickly without retaining long-lived objects.) Tj
+T*
+() Tj
+T*
+() Tj
+T*
+(What Is Within My Control \(Future Improvements\)) Tj
+T*
+(------------------------------------------------) Tj
+T*
+(1\) Reduce redundant math in getDistance:) Tj
+T*
+(   Convert and reuse values once per request where possible.) Tj
+T*
+() Tj
+T*
+(2\) Add memoization for repeated coordinate pairs:) Tj
+T*
+(   If common points are requested frequently, caching can reduce repeated computation.) Tj
+T*
+() Tj
+T*
+(3\) Keep profiling in production-like runs:) Tj
+T*
+(   Test-only profiles include TypeScript/Jest overhead, which can hide real endpoint hotspots.) Tj
+T*
+() Tj
+T*
+(4\) Track latency percentiles \(P50/P95\), not only average:) Tj
+T*
+(   This gives a better view of user experience under heavier load.) Tj
+T*
+() Tj
+T*
+(5\) Tune log volume in high-throughput paths:) Tj
+T*
+(   Logging overhead can become significant at scale.) Tj
+T*
+() Tj
+T*
+() Tj
+T*
+(Conclusion) Tj
+T*
+(----------) Tj
+T*
+(Dynamic profiling showed that the service is memory-stable and generally fast, with the primary) Tj
+T*
+(CPU-intensive path being distance calculation \(getDistance\).) Tj
+T*
+(This is expected based on the math-heavy nature of that endpoint.) Tj
+T*
+(The best next optimizations are math-path efficiency improvements and better runtime) Tj
+T*
+(observability.) Tj
+T*
+() Tj
+ET
+endstream
+endobj
+4 0 obj
+<< /Type /Page /Parent 4 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R >> >> /Contents 2 0 R >>
+endobj
+5 0 obj
+<< /Type /Page /Parent 4 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R >> >> /Contents 3 0 R >>
+endobj
+6 0 obj
+<< /Type /Pages /Count 2 /Kids [4 0 R 5 0 R] >>
+endobj
+7 0 obj
+<< /Type /Catalog /Pages 6 0 R >>
+endobj
+xref
+0 8
+0000000000 65535 f 
+0000000009 00000 n 
+0000000079 00000 n 
+0000001957 00000 n 
+0000004426 00000 n 
+0000004552 00000 n 
+0000004678 00000 n 
+0000004741 00000 n 
+trailer
+<< /Size 8 /Root 7 0 R >>
+startxref
+4790
+%%EOF
